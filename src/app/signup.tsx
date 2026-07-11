@@ -31,27 +31,26 @@ export default function SignupScreen() {
   async function handleSignup() {
     const cleanEmail = email.trim().toLowerCase();
 
+    const showAlert = (title: string, msg: string) => {
+      if (Platform.OS === 'web') {
+        alert(`${title}: ${msg}`);
+      } else {
+        Alert.alert(title, msg);
+      }
+    };
+
     if (!cleanEmail || !password || !confirmPassword) {
-      Alert.alert(
-        'Missing information',
-        'Complete all fields.'
-      );
+      showAlert('Missing information', 'Complete all fields.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert(
-        'Password too short',
-        'Your password must contain at least 6 characters.'
-      );
+      showAlert('Password too short', 'Your password must contain at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(
-        'Passwords do not match',
-        'Enter the same password in both fields.'
-      );
+      showAlert('Passwords do not match', 'Enter the same password in both fields.');
       return;
     }
 
@@ -64,7 +63,7 @@ export default function SignupScreen() {
       );
 
       if (!result.session) {
-        Alert.alert(
+        showAlert(
           'Check your email',
           'We sent you a confirmation link. Confirm your email, then sign in.'
         );
@@ -80,7 +79,7 @@ export default function SignupScreen() {
           ? error.message
           : 'Unable to create your account.';
 
-      Alert.alert('Sign-up failed', message);
+      showAlert('Sign-up failed', message);
     } finally {
       setSubmitting(false);
     }

@@ -30,11 +30,16 @@ export default function LoginScreen() {
   async function handleLogin() {
     const cleanEmail = email.trim().toLowerCase();
 
+    const showAlert = (title: string, msg: string) => {
+      if (Platform.OS === 'web') {
+        alert(`${title}: ${msg}`);
+      } else {
+        Alert.alert(title, msg);
+      }
+    };
+
     if (!cleanEmail || !password) {
-      Alert.alert(
-        'Missing information',
-        'Enter email and password.'
-      );
+      showAlert('Missing information', 'Enter email and password.');
       return;
     }
 
@@ -50,7 +55,7 @@ export default function LoginScreen() {
           ? error.message
           : 'Unable to sign in. Check your credentials.';
 
-      Alert.alert('Sign-in failed', message);
+      showAlert('Sign-in failed', message);
     } finally {
       setSubmitting(false);
     }
