@@ -12,6 +12,7 @@ export async function getArticles() {
   const { data, error } = await supabase
     .from('articles')
     .select('*')
+    .eq('is_published', true)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -37,6 +38,7 @@ export async function getArticleBySlug(slug: string) {
     .from('articles')
     .select('*')
     .eq('slug', slug)
+    .eq('is_published', true)
     .maybeSingle();
 
   if (error) {

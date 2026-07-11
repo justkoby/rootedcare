@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,36 +25,39 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
 
   async function handleLogin() {
+    console.log('Sign in pressed');
+
     const cleanEmail = email.trim().toLowerCase();
 
-    const showAlert = (title: string, msg: string) => {
-      if (Platform.OS === 'web') {
-        alert(`${title}: ${msg}`);
-      } else {
-        Alert.alert(title, msg);
-      }
-    };
+    setMessage('');
 
     if (!cleanEmail || !password) {
-      showAlert('Missing information', 'Enter email and password.');
+      setMessage('Please enter your email and password.');
       return;
     }
 
     try {
       setSubmitting(true);
+      setMessage('Signing in...');
 
       await signIn(cleanEmail, password);
 
+      console.log('SIGN IN SUCCESS');
+      setMessage('Signed in successfully.');
+
       router.replace('/');
     } catch (error) {
-      const message =
+      console.error('SIGN IN ERROR:', error);
+
+      const errorMessage =
         error instanceof Error
           ? error.message
           : 'Unable to sign in. Check your credentials.';
 
-      showAlert('Sign-in failed', message);
+      setMessage(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -116,6 +118,20 @@ export default function LoginScreen() {
                 </Text>
               )}
             </Pressable>
+
+            {!!message && (
+              <Text
+                style={{
+                  marginTop: 14,
+                  textAlign: 'center',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: '#8f5032',
+                }}
+              >
+                {message}
+              </Text>
+            )}
 
             <Link href="/signup" asChild>
               <Pressable style={styles.linkButton}>

@@ -4,6 +4,7 @@ export async function getWellnessItems() {
   const { data, error } = await supabase
     .from('wellness_concerns')
     .select('*')
+    .eq('is_published', true)
     .order('name', { ascending: true });
 
   if (error) {
@@ -23,6 +24,7 @@ export async function getWellnessItemBySlug(slug: string) {
     .from('wellness_concerns')
     .select('*')
     .eq('slug', slug)
+    .eq('is_published', true)
     .maybeSingle();
 
   if (error) {

@@ -145,6 +145,7 @@ export default function HerbDetailScreen() {
         .from('herbs')
         .select('*')
         .eq('slug', id)
+        .eq('is_published', true)
         .maybeSingle();
 
       if (error) {
@@ -577,7 +578,7 @@ export default function HerbDetailScreen() {
         <Button
           title="Add to My Care"
           variant="primary"
-          onPress={() => router.push('/add-to-plan' as any)}
+          onPress={() => router.push(`/add-to-plan?herbId=${id}` as any)}
           style={styles.ctaButton}
           icon={<Plus size={18} color="#FFFFFF" />}
         />

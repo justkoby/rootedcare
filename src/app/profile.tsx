@@ -1,147 +1,366 @@
-import React from 'react';
+import { useCallback, useState } from 'react';
 import {
-  StyleSheet, Text, View, SafeAreaView, StatusBar,
-  useColorScheme, ScrollView, Pressable, Image,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import {
-  Home as HomeIcon, Search, Calendar, BookOpen, User,
-  ChevronRight, ClipboardList, Bell, BookMarked, BookOpen as BookOpenIcon,
-  Settings as SettingsIcon, Heart, LogOut, BookText, Info, Leaf,
-} from 'lucide-react-native';
-import { Colors } from '../constants/Colors';
-import { AnimatedTabBar, StaggerFadeIn } from '../components/animations';
-import { useAuthStore } from '../store/useAuthStore';
+  useFocusEffect,
+  useRouter,
+} from 'expo-router';
 
-const TAB_CONFIG = [
-  { key: 'home',     icon: <HomeIcon />,   label: 'Home'    },
-  { key: 'explore',  icon: <Search />,     label: 'Explore' },
-  { key: 'my-care',  icon: <Calendar />,   label: 'My Care' },
-  { key: 'learn',    icon: <BookOpen />,    label: 'Library' },
-  { key: 'profile',  icon: <User />,       label: 'Profile' },
-];
+import { useAuth } from '../context/AuthContext';
+import { getFavorites } from '../services/favorites';
+import { signOut } from '../services/auth';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === 'dark' ? 'dark' : 'light';
-  const colors = Colors[theme];
-  const name = useAuthStore((s) => s.name);
-  const interests = useAuthStore((s) => s.interests);
+  const { user, loading: authLoading } = useAuth();
 
-  const menuItems = [
-    { icon: ClipboardList, label: 'My Care Plan', route: '/my-care-plan' },
-    { icon: Bell, label: 'Reminders', route: '/reminders' },
-    { icon: Heart, label: 'Saved Herbs', route: '/saved-herbs' },
-    { icon: BookText, label: 'Wellness Journal', route: '/journal' },
-    { icon: BookOpenIcon, label: 'My Articles', route: '/learn' },
-    { icon: Leaf, label: 'Health Preferences', route: '/health-preferences' },
-    { icon: Info, label: 'About RootedCare', route: '/about' },
-    { icon: SettingsIcon, label: 'Settings', route: '/settings' },
-  ];
+  const [savedCount, setSavedCount] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      async function loadSavedCount() {
+        if (!user) {
+          setSavedCount(0);
+          return;
+        }
+
+        try {
+          setLoadingCount(true);
+
+          const favorites = await getFavorites();
+
+          setSavedCount(favorites.length);
+        } catch (error) {
+          console.error(
+            'Unable to load saved count:',
+            error
+          );
+        } finally {
+          setLoadingCount(false);
+        }
+      }
+
+      loadSavedCount();
+    }, [user])
+  );
+
+  function handleSignOut() {
+    Alert.alert(
+      'Sign out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSigningOut(true);
+
+              await signOut();
+
+              router.replace('/login');
+            } catch (error) {
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : 'Unable to sign out.';
+
+              Alert.alert(
+                'Sign-out failed',
+                message
+              );
+            } finally {
+              setSigningOut(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.title}>Your profile</Text>
+
+        <Text style={styles.message}>
+          Sign in to manage your RootedCare account
+          and saved items.
+        </Text>
+
+        <Pressable
+          onPress={() => router.push('/login' as any)}
+          style={styles.primaryButton}
+        >
+          <Text style={styles.primaryButtonText}>
+            Sign in
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/signup' as any)}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>
+            Create account
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const email = user.email ?? 'No email available';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+    <View style={styles.container}>
+      <Text style={styles.title}>Your profile</Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Animated.View entering={FadeInUp.duration(400).springify()}>
-          <View style={[styles.profileCard, { backgroundColor: colors.primary }]}>
-            <View style={styles.avatarWrapper}>
-              <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <User size={40} color="#FFFFFF" />
-              </View>
-            </View>
-            <Text style={styles.profileName}>{name}</Text>
-            <Pressable
-              style={[styles.editBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-              onPress={() => router.push('/settings' as any)}
-            >
-              <Text style={styles.editLabel}>Edit Profile</Text>
-            </Pressable>
-            {interests.length > 0 && (
-              <View style={styles.interestRow}>
-                {interests.slice(0, 3).map((i) => (
-                  <View key={i} style={styles.interestChip}>
-                    <Text style={styles.interestText}>{i.replace('-', ' ')}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+      <View style={styles.accountCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {email.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.accountContent}>
+          <Text style={styles.accountLabel}>
+            Signed in as
+          </Text>
+
+          <Text style={styles.email}>
+            {email}
+          </Text>
+        </View>
+      </View>
+
+      <Pressable
+        onPress={() => router.push('/my-care' as any)}
+        style={styles.menuCard}
+      >
+        <View>
+          <Text style={styles.menuTitle}>
+            My Care
+          </Text>
+
+          <Text style={styles.menuDescription}>
+            View your saved herbs and wellness guides
+          </Text>
+        </View>
+
+        {loadingCount ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>
+              {savedCount}
+            </Text>
           </View>
-        </Animated.View>
+        )}
+      </Pressable>
 
-        <Animated.View entering={FadeInUp.delay(100).duration(400).springify()} style={styles.menuSection}>
-          {menuItems.slice(0, 4).map((item, i) => {
-            const IconComp = item.icon;
-            return (
-              <Pressable
-                key={i}
-                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push(item.route as any)}
-              >
-                <View style={[styles.menuIconWrapper, { backgroundColor: colors.border }]}>
-                  <IconComp size={18} color={colors.primary} />
-                </View>
-                <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
-                <ChevronRight size={16} color={colors.textMuted} />
-              </Pressable>
-            );
-          })}
-        </Animated.View>
+      <View style={styles.infoCard}>
+        <Text style={styles.infoTitle}>
+          RootedCare
+        </Text>
 
-        <Animated.View entering={FadeInUp.delay(200).duration(400).springify()} style={styles.menuSection}>
-          {menuItems.slice(4).map((item, i) => {
-            const IconComp = item.icon;
-            return (
-              <Pressable
-                key={i}
-                style={[styles.menuItem, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push(item.route as any)}
-              >
-                <View style={[styles.menuIconWrapper, { backgroundColor: colors.border }]}>
-                  <IconComp size={18} color={colors.primary} />
-                </View>
-                <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
-                <ChevronRight size={16} color={colors.textMuted} />
-              </Pressable>
-            );
-          })}
-        </Animated.View>
-      </ScrollView>
+        <Text style={styles.infoText}>
+          Educational herbal and wellness information
+          inspired by traditional Ghanaian knowledge.
+        </Text>
+      </View>
 
-      <AnimatedTabBar
-        tabs={TAB_CONFIG}
-        activeTab="profile"
-        onTabPress={(key) => {
-          const routes: Record<string, string> = {
-            home: '/home', explore: '/explore', 'my-care': '/my-care-plan',
-            learn: '/learn', profile: '/profile',
-          };
-          if (routes[key] && key !== 'profile') router.push(routes[key] as any);
-        }}
-        colors={{ primary: colors.primary, textMuted: colors.textMuted, card: colors.card, border: colors.border }}
-        theme={theme}
-      />
-    </SafeAreaView>
+      <Pressable
+        onPress={handleSignOut}
+        disabled={signingOut}
+        style={[
+          styles.signOutButton,
+          signingOut && styles.disabledButton,
+        ]}
+      >
+        {signingOut ? (
+          <ActivityIndicator color="#98542f" />
+        ) : (
+          <Text style={styles.signOutText}>
+            Sign out
+          </Text>
+        )}
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
-  profileCard: { margin: 24, borderRadius: 28, padding: 28, alignItems: 'center' },
-  avatarWrapper: { marginBottom: 12 },
-  avatarPlaceholder: { width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center' },
-  profileName: { fontFamily: 'Poppins_600SemiBold', fontSize: 22, color: '#FFFFFF', marginBottom: 12 },
-  editBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
-  editLabel: { fontFamily: 'Poppins_500Medium', fontSize: 14, color: '#FFFFFF' },
-  interestRow: { flexDirection: 'row', gap: 6, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' },
-  interestChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)' },
-  interestText: { fontFamily: 'Inter_500Medium', fontSize: 11, color: '#FFFFFF', textTransform: 'capitalize' },
-  menuSection: { paddingHorizontal: 24, marginBottom: 12 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 8, gap: 12 },
-  menuIconWrapper: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  menuLabel: { flex: 1, fontFamily: 'Poppins_500Medium', fontSize: 15 },
+  container: {
+    flex: 1,
+    paddingTop: 64,
+    paddingHorizontal: 20,
+    backgroundColor: '#faf7f2',
+  },
+  center: {
+    flex: 1,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#faf7f2',
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#252525',
+    marginBottom: 24,
+  },
+  message: {
+    maxWidth: 320,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    color: '#707070',
+    marginBottom: 24,
+  },
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#98542f',
+  },
+  avatarText: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  accountContent: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  accountLabel: {
+    fontSize: 13,
+    color: '#777777',
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#252525',
+  },
+  menuCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    marginBottom: 16,
+  },
+  menuTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#252525',
+    marginBottom: 5,
+  },
+  menuDescription: {
+    maxWidth: 260,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#777777',
+  },
+  countBadge: {
+    minWidth: 36,
+    height: 36,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#efe2d8',
+  },
+  countText: {
+    color: '#98542f',
+    fontWeight: '700',
+  },
+  infoCard: {
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    marginBottom: 16,
+  },
+  infoTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#252525',
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#777777',
+  },
+  primaryButton: {
+    width: '100%',
+    maxWidth: 320,
+    minHeight: 54,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#98542f',
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    marginTop: 12,
+    padding: 14,
+  },
+  secondaryButtonText: {
+    color: '#98542f',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: '#98542f',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  signOutText: {
+    color: '#98542f',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });

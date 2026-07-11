@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -12,6 +13,12 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Clock } from 'lucide-react-native';
+import { useAuth } from '../context/AuthContext';
+import {
+  addFavorite,
+  checkFavorite,
+  removeFavorite,
+} from '../services/favorites';
 import { getArticleBySlug } from '../services/articles';
 import { Colors } from '../constants/Colors';
 import { herbs } from '../data/herbs';
@@ -43,9 +50,84 @@ export default function ArticleDetails() {
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
 
+  const { user } = useAuth();
+
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] =
+    useState(false);
+
+  useEffect(() => {
+    async function loadFavoriteStatus() {
+      if (!user || !article?.id) {
+        setIsFavorite(false);
+        return;
+      }
+
+      try {
+        const saved = await checkFavorite(
+          'article',
+          article.id
+        );
+
+        setIsFavorite(saved);
+      } catch (error) {
+        console.error(
+          'Unable to check article favorite:',
+          error
+        );
+      }
+    }
+
+    loadFavoriteStatus();
+  }, [user, article?.id]);
+
+  async function handleFavorite() {
+    if (!user) {
+      Alert.alert(
+        'Sign in required',
+        'Sign in to save this article to My Care.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Sign in',
+            onPress: () => router.push('/login' as any),
+          },
+        ]
+      );
+
+      return;
+    }
+
+    if (!article?.id || favoriteLoading) return;
+
+    try {
+      setFavoriteLoading(true);
+
+      if (isFavorite) {
+        await removeFavorite('article', article.id);
+        setIsFavorite(false);
+      } else {
+        await addFavorite('article', article.id);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to update My Care.';
+
+      Alert.alert('Something went wrong', message);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  }
 
   useEffect(() => {
     async function loadArticle() {
@@ -148,6 +230,40 @@ export default function ArticleDetails() {
               No article content has been added yet.
             </Text>
           )}
+
+          <Pressable
+            onPress={handleFavorite}
+            disabled={favoriteLoading}
+            style={{
+              minHeight: 54,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: isFavorite
+                ? '#efe5dc'
+                : '#98542f',
+              opacity: favoriteLoading ? 0.6 : 1,
+              marginTop: 24,
+            }}
+          >
+            {favoriteLoading ? (
+              <ActivityIndicator
+                color={isFavorite ? '#98542f' : '#ffffff'}
+              />
+            ) : (
+              <Text
+                style={{
+                  color: isFavorite ? '#98542f' : '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600',
+                }}
+              >
+                {isFavorite
+                  ? '✓ Saved to My Care'
+                  : '+ Save to My Care'}
+              </Text>
+            )}
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   StyleSheet,
   Text,
   View,
@@ -38,21 +40,46 @@ export default function AddToPlanScreen() {
   const [selectedTime, setSelectedTime] = useState<TimeSlot>('morning');
   const [purpose, setPurpose] = useState('');
   const [notes, setNotes] = useState('');
+  const [adding, setAdding] = useState(false);
   const [showHerbPicker, setShowHerbPicker] = useState(false);
 
   const selectedHerb = herbs.find(h => h.id === selectedHerbId);
   const timeSlots: TimeSlot[] = ['morning', 'afternoon', 'evening'];
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!selectedHerb) return;
-    addEntry({
-      herbId: selectedHerbId,
-      timeOfDay: selectedTime,
-      label: selectedHerb.name,
-      purpose: purpose.trim() || `Take ${selectedHerb.name}`,
-      notes: notes.trim(),
-    }, user?.id);
-    router.back();
+
+    try {
+      setAdding(true);
+
+      await addEntry({
+        herbId: selectedHerbId,
+        timeOfDay: selectedTime,
+        label: selectedHerb.name,
+        purpose: purpose.trim() || `Take ${selectedHerb.name}`,
+        notes: notes.trim(),
+      }, user?.id);
+
+      Alert.alert(
+        'Added to plan',
+        `${selectedHerb.name} has been added to your care plan.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to add to plan.';
+
+      Alert.alert('Something went wrong', message);
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -187,9 +214,11 @@ export default function AddToPlanScreen() {
       {/* Sticky bottom CTA */}
       <View style={[styles.stickyFooter, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <Button
-          title="Add to Plan"
+          title={adding ? 'Adding...' : 'Add to Plan'}
           variant="primary"
           onPress={handleAdd}
+          disabled={adding}
+          loading={adding}
           style={styles.ctaButton}
         />
       </View>

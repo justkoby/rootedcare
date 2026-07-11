@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -27,59 +26,58 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
 
   async function handleSignup() {
+    console.log('Create account pressed');
+
     const cleanEmail = email.trim().toLowerCase();
 
-    const showAlert = (title: string, msg: string) => {
-      if (Platform.OS === 'web') {
-        alert(`${title}: ${msg}`);
-      } else {
-        Alert.alert(title, msg);
-      }
-    };
+    setMessage('');
 
     if (!cleanEmail || !password || !confirmPassword) {
-      showAlert('Missing information', 'Complete all fields.');
+      setMessage('Please complete all fields.');
       return;
     }
 
     if (password.length < 6) {
-      showAlert('Password too short', 'Your password must contain at least 6 characters.');
+      setMessage('Password must contain at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      showAlert('Passwords do not match', 'Enter the same password in both fields.');
+      setMessage('The passwords do not match.');
       return;
     }
 
     try {
       setSubmitting(true);
+      setMessage('Creating your account...');
 
-      const result = await signUp(
-        cleanEmail,
-        password
-      );
+      const result = await signUp(cleanEmail, password);
+
+      console.log('SIGNUP RESULT:', result);
 
       if (!result.session) {
-        showAlert(
-          'Check your email',
-          'We sent you a confirmation link. Confirm your email, then sign in.'
+        setMessage(
+          'Account created. Check your email and confirm your account before signing in.'
         );
 
-        router.replace('/login');
         return;
       }
 
+      setMessage('Account created successfully.');
+
       router.replace('/');
     } catch (error) {
-      const message =
+      console.error('SIGNUP ERROR:', error);
+
+      const errorMessage =
         error instanceof Error
           ? error.message
           : 'Unable to create your account.';
 
-      showAlert('Sign-up failed', message);
+      setMessage(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -151,6 +149,20 @@ export default function SignupScreen() {
                 </Text>
               )}
             </Pressable>
+
+            {!!message && (
+              <Text
+                style={{
+                  marginTop: 14,
+                  textAlign: 'center',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: '#8f5032',
+                }}
+              >
+                {message}
+              </Text>
+            )}
 
             <Link href="/login" asChild>
               <Pressable style={styles.linkButton}>

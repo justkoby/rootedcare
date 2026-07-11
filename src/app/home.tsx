@@ -8,7 +8,7 @@ import Animated, {
   FadeInUp,
 } from 'react-native-reanimated';
 import {
-  Bell, Search, ChevronRight,
+  Bell, Search, ChevronRight, MessageCircle,
   Home as HomeIcon, BookOpen, User, Calendar,
   Droplets, Moon, Heart, Activity, CheckCircle,
 } from 'lucide-react-native';
@@ -148,7 +148,7 @@ export default function HomeScreen() {
     const routes: Record<string, string> = {
       home: '/home',
       explore: '/explore',
-      'my-care': '/my-care-plan',
+      'my-care': '/my-care',
       learn: '/learn',
       profile: '/profile',
     };
@@ -279,11 +279,11 @@ export default function HomeScreen() {
         >
           <AnimatedPressable
             style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => router.push('/explore' as any)}
+            onPress={() => router.push('/search' as any)}
           >
             <Search size={18} color={colors.textMuted} />
             <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>
-              Search herbs, symptoms, conditions...
+              Search herbs, wellness and articles
             </Text>
           </AnimatedPressable>
         </Animated.View>
@@ -475,6 +475,17 @@ export default function HomeScreen() {
 
       </ScrollView>
 
+      {/* ── FLOATING AI ASSISTANT BUTTON ── */}
+      <Pressable
+        onPress={() => router.push('/assistant' as any)}
+        style={[
+          styles.fab,
+          { backgroundColor: colors.primary },
+        ]}
+      >
+        <MessageCircle size={24} color="#ffffff" />
+      </Pressable>
+
       {/* ── ANIMATED BOTTOM TAB BAR ── */}
       <AnimatedTabBar
         tabs={TAB_CONFIG}
@@ -582,4 +593,22 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   actionBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
+
+  // Floating AI assistant button
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 50,
+  },
 });

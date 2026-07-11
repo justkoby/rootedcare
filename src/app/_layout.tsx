@@ -65,6 +65,9 @@ export default function RootLayout() {
           {/* New screens */}
           <Stack.Screen name="article/[id]" />
           <Stack.Screen name="saved-herbs" />
+          <Stack.Screen name="my-care" />
+          <Stack.Screen name="search" />
+          <Stack.Screen name="assistant" />
           <Stack.Screen name="journal" />
           <Stack.Screen name="health-preferences" />
           <Stack.Screen name="about" />

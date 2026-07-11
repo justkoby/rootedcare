@@ -1,4 +1,4 @@
-// scripts/test_wellness.js
+// scripts/inspect_db_schema.js
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
@@ -24,25 +24,30 @@ if (fs.existsSync(envPath)) {
 const supabase = createClient(supabaseUrl, supabasePublishableKey);
 
 async function test() {
-  try {
-    console.log('Fetching from table "wellness_concerns"...');
-    const { data, error } = await supabase
-      .from('wellness_concerns')
-      .select('*')
-      .limit(5);
+  const tablesToTry = [
+    'favorites',
+    'user_favorites',
+    'saved_herbs',
+    'care_plans',
+    'care_plan',
+    'user_care_plans',
+    'user_saved_herbs',
+    'user_care_plan_herbs',
+    'user_care_plan'
+  ];
 
-    if (error) {
-      console.error('Error fetching wellness_concerns:', error);
-      process.exit(1);
+  for (const table of tablesToTry) {
+    try {
+      console.log(`Checking table "${table}"...`);
+      const { data, error } = await supabase.from(table).select('*').limit(1);
+      if (error) {
+        console.log(`- Table "${table}" error:`, error.message);
+      } else {
+        console.log(`- SUCCESS! Table "${table}" exists. Sample columns:`, data.length > 0 ? Object.keys(data[0]) : '(empty table)');
+      }
+    } catch (err) {
+      console.log(`- Table "${table}" failed:`, err.message);
     }
-
-    console.log('Query Succeeded! Rows returned:', data.length);
-    if (data.length > 0) {
-      console.log('Sample row fields:', Object.keys(data[0]));
-      console.log('First row data:', JSON.stringify(data[0], null, 2));
-    }
-  } catch (err) {
-    console.error('Failed:', err.message);
   }
 }
 

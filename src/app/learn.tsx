@@ -170,7 +170,7 @@ export default function LearnScreen() {
           const routes: Record<string, string> = {
             home: '/home',
             explore: '/explore',
-            'my-care': '/my-care-plan',
+            'my-care': '/my-care',
             learn: '/learn',
             profile: '/profile',
           };

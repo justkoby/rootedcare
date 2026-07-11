@@ -67,6 +67,7 @@ export default function ExploreScreen() {
       const { data, error } = await supabase
         .from('herbs')
         .select('*')
+        .eq('is_published', true)
         .order('common_name', { ascending: true });
 
       if (error) {
@@ -257,7 +258,7 @@ export default function ExploreScreen() {
           const routes: Record<string, string> = {
             home: '/home',
             explore: '/explore',
-            'my-care': '/my-care-plan',
+            'my-care': '/my-care',
             learn: '/learn',
             profile: '/profile',
           };
