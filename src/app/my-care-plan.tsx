@@ -28,6 +28,7 @@ import { Colors } from '../constants/Colors';
 import { herbs } from '../data/herbs';
 import { AnimatedTabBar } from '../components/animations';
 import { useCarePlanStore } from '../store/useCarePlanStore';
+import { useAuth } from '../context/AuthContext';
 
 const TAB_CONFIG = [
   { key: 'home',     icon: <HomeIcon />,   label: 'Home'    },
@@ -42,6 +43,7 @@ export default function MyCarePlanScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
+  const { user } = useAuth();
 
   const entries = useCarePlanStore((s) => s.entries);
   const toggleDone = useCarePlanStore((s) => s.toggleDone);
@@ -106,8 +108,8 @@ export default function MyCarePlanScreen() {
                 <Pressable
                   key={entry.id}
                   style={[styles.planCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => toggleDone(entry.id)}
-                  onLongPress={() => removeEntry(entry.id)}
+                  onPress={() => toggleDone(entry.id, user?.id)}
+                  onLongPress={() => removeEntry(entry.id, user?.id)}
                 >
                   {herb && (
                     <Image source={herb.image} style={styles.planThumb} />

@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, CheckSquare, Square } from 'lucide-react-nat
 import { Colors } from '../constants/Colors';
 import { useCarePlanStore } from '../store/useCarePlanStore';
 import { herbs } from '../data/herbs';
+import { useAuth } from '../context/AuthContext';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -26,6 +27,7 @@ export default function CalendarScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
+  const { user } = useAuth();
   const entries = useCarePlanStore((s) => s.entries);
   const toggleDone = useCarePlanStore((s) => s.toggleDone);
 
@@ -124,7 +126,7 @@ export default function CalendarScreen() {
                   entering={FadeInUp.delay(i * 60).duration(300).springify()}
                   style={[styles.planCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 >
-                  <Pressable onPress={() => toggleDone(entry.id)}>
+                  <Pressable onPress={() => toggleDone(entry.id, user?.id)}>
                     {entry.done
                       ? <CheckSquare size={22} color={colors.accent} />
                       : <Square size={22} color={colors.border} />

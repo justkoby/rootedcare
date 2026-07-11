@@ -21,6 +21,7 @@ import { Colors } from '../constants/Colors';
 import { herbs } from '../data/herbs';
 import { Button } from '../components/Button';
 import { useCarePlanStore } from '../store/useCarePlanStore';
+import { useAuth } from '../context/AuthContext';
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening';
 
@@ -31,6 +32,7 @@ export default function AddToPlanScreen() {
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
   const addEntry = useCarePlanStore((s) => s.addEntry);
+  const { user } = useAuth();
 
   const [selectedHerbId, setSelectedHerbId] = useState<string>(paramHerbId || 'ginger');
   const [selectedTime, setSelectedTime] = useState<TimeSlot>('morning');
@@ -49,7 +51,7 @@ export default function AddToPlanScreen() {
       label: selectedHerb.name,
       purpose: purpose.trim() || `Take ${selectedHerb.name}`,
       notes: notes.trim(),
-    });
+    }, user?.id);
     router.back();
   };
 

@@ -11,6 +11,8 @@ import type {
 } from '@supabase/supabase-js';
 
 import { supabase } from '../lib/supabase';
+import { useFavoriteStore } from '../store/useFavoriteStore';
+import { useCarePlanStore } from '../store/useCarePlanStore';
 
 type AuthContextType = {
   user: User | null;
@@ -42,8 +44,13 @@ export function AuthProvider({
       .getSession()
       .then(({ data }) => {
         setSession(data.session);
-        setUser(data.session?.user ?? null);
+        const currentUser = data.session?.user ?? null;
+        setUser(currentUser);
         setLoading(false);
+        if (currentUser) {
+          useFavoriteStore.getState().loadFavorites(currentUser.id);
+          useCarePlanStore.getState().loadCarePlan(currentUser.id);
+        }
       });
 
     const {
@@ -51,8 +58,18 @@ export function AuthProvider({
     } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
         setSession(nextSession);
-        setUser(nextSession?.user ?? null);
+        const nextUser = nextSession?.user ?? null;
+        setUser(nextUser);
         setLoading(false);
+
+        if (nextUser) {
+          useFavoriteStore.getState().loadFavorites(nextUser.id);
+          useCarePlanStore.getState().loadCarePlan(nextUser.id);
+        } else {
+          // Clear store state on logout
+          useFavoriteStore.setState({ favorites: [] });
+          useCarePlanStore.setState({ entries: [] });
+        }
       }
     );
 

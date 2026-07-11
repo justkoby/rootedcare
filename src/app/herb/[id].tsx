@@ -4,6 +4,7 @@ import {
   useColorScheme, Image, ScrollView, Pressable, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -125,6 +126,7 @@ export default function HerbDetailScreen() {
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
 
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const scrollY = useSharedValue(0);
   const favorites = useFavoriteStore((s) => s.favorites);
@@ -256,7 +258,7 @@ export default function HerbDetailScreen() {
         <Pressable style={styles.headerBtn} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#FFFFFF" />
         </Pressable>
-        <HeartButton isFavorited={isFavorited} onPress={() => toggleFavorite(id as string)} />
+        <HeartButton isFavorited={isFavorited} onPress={() => toggleFavorite(id as string, user?.id)} />
       </Animated.View>
 
       {/* Compact header (shows on scroll) */}
@@ -273,7 +275,7 @@ export default function HerbDetailScreen() {
         <Text style={[styles.compactTitle, { color: colors.text }]} numberOfLines={1}>
           {herb.name}
         </Text>
-        <Pressable onPress={() => toggleFavorite(id as string)} style={styles.compactBackBtn}>
+        <Pressable onPress={() => toggleFavorite(id as string, user?.id)} style={styles.compactBackBtn}>
           <Heart
             size={20}
             color={isFavorited ? '#E91E63' : colors.textMuted}
