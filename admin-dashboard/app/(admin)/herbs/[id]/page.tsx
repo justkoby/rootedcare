@@ -15,7 +15,7 @@ export default async function HerbEditPage({
 
   const { data: herb, error } = await admin
     .from('herbs')
-    .select('*, name:common_name')
+    .select('*, name:common_name, short_description:description, preparation:preparation_overview, safety_notes:safety_summary')
     .eq('id', id)
     .maybeSingle()
 

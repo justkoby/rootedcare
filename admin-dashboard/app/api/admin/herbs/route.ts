@@ -64,15 +64,27 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json()
-    if (body.name !== undefined) {
-      body.common_name = body.name
-      delete body.name
-    }
+    
+    // Create clean update payload matching DB schema
+    const dbPayload: any = {}
+    
+    if (body.name !== undefined) dbPayload.common_name = body.name
+    if (body.slug !== undefined) dbPayload.slug = body.slug
+    if (body.scientific_name !== undefined) dbPayload.scientific_name = body.scientific_name
+    if (body.image_url !== undefined) dbPayload.image_url = body.image_url
+    if (body.summary !== undefined) dbPayload.summary = body.summary
+    if (body.short_description !== undefined) dbPayload.description = body.short_description
+    if (body.preparation !== undefined) dbPayload.preparation_overview = body.preparation
+    if (body.safety_notes !== undefined) dbPayload.safety_summary = body.safety_notes
+    if (body.is_published !== undefined) dbPayload.is_published = body.is_published
+    if (body.is_featured !== undefined) dbPayload.is_featured = body.is_featured
+    if (body.origin_note !== undefined) dbPayload.origin_note = body.origin_note
+
     const admin = createAdminClient()
 
     const { data, error } = await admin
       .from('herbs')
-      .update(body)
+      .update(dbPayload)
       .eq('id', id)
       .select()
 
