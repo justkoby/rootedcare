@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, StatusBar,
   useColorScheme, ScrollView, Pressable, TextInput,
-  FlatList,
+  FlatList, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -11,7 +11,8 @@ import {
   Home as HomeIcon, Calendar, BookOpen, User, X,
 } from 'lucide-react-native';
 import { Colors } from '../constants/Colors';
-import { herbs } from '../data/herbs';
+import { herbs as hardcodedHerbs, Herb } from '../data/herbs';
+import { supabase } from '../lib/supabase';
 import { HerbCard } from '../components/HerbCard';
 import { AnimatedTabBar } from '../components/animations';
 
@@ -54,6 +55,47 @@ export default function ExploreScreen() {
   const [category, setCategory] = useState('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
+  // Commented out as requested:
+  // const hardcodedHerbs = hardcodedHerbs;
+
+  const [herbs, setHerbs] = useState<Herb[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function fetchHerbs() {
+      const { data, error } = await supabase
+        .from('herbs')
+        .select('*')
+        .order('common_name', { ascending: true });
+
+      if (error) {
+        console.error('Error loading herbs:', error);
+        setError('Unable to load herbs.');
+      } else {
+        const mappedData = (data || []).map((h: any) => {
+          const localHerb = hardcodedHerbs.find(lh => lh.id === h.slug) || hardcodedHerbs[0];
+          return {
+            ...localHerb,
+            id: h.slug || h.id, // routing compatibility
+            name: h.common_name || h.name || localHerb?.name || '',
+            scientificName: h.scientific_name || localHerb?.scientificName || '',
+            description: h.summary || h.description || localHerb?.description || '',
+            bestFor: localHerb?.bestFor || [],
+            symptoms: localHerb?.symptoms || [],
+            localNames: localHerb?.localNames || {},
+            image: h.image_url ? { uri: h.image_url } : (localHerb?.image || require('../assets/herbs/ginger.png')),
+          };
+        });
+        setHerbs(mappedData);
+      }
+
+      setLoading(false);
+    }
+
+    fetchHerbs();
+  }, []);
+
   const filtered = useMemo(() => {
     let results = herbs;
 
@@ -78,7 +120,7 @@ export default function ExploreScreen() {
     }
 
     return results;
-  }, [query, category]);
+  }, [query, category, herbs]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -156,7 +198,16 @@ export default function ExploreScreen() {
         </View>
 
         {/* Results */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={styles.centerLoading}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ color: colors.textMuted, marginTop: 12 }}>Loading herbs...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerLoading}>
+            <Text style={{ color: '#EF4444', textAlign: 'center' }}>{error}</Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🌿</Text>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>No herbs found</Text>
@@ -254,4 +305,5 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontFamily: 'Inter_400Regular', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
   emptyBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 },
   emptyBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 15, color: '#FFFFFF' },
+  centerLoading: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
 });
