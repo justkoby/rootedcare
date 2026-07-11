@@ -76,6 +76,23 @@ function HeartButton({ isFavorited, onPress }: { isFavorited: boolean; onPress: 
   );
 }
 
+function toList(value: unknown): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map(String);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\n|,|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 const emptyHerb: Herb = {
   id: '',
   name: '',
@@ -134,6 +151,7 @@ export default function HerbDetailScreen() {
       } else if (!data) {
         setError('Herb not found.');
       } else {
+        console.log('HERB DATA:', data);
         const localHerb = hardcodedHerbs.find(lh => lh.id === data.slug) || emptyHerb;
         setHerb({
           ...localHerb,
@@ -146,6 +164,10 @@ export default function HerbDetailScreen() {
           symptoms: localHerb?.symptoms || [],
           localNames: localHerb?.localNames || {},
           image: data.image_url ? { uri: data.image_url } : (localHerb?.image || require('../../assets/herbs/ginger.png')),
+          // Normalize dynamic fields using safe toList function
+          benefits: toList(data.benefits ?? localHerb?.benefits),
+          preparation: toList(data.preparation_methods ?? data.preparation ?? data.preparation_overview ?? localHerb?.preparation),
+          precautions: toList(data.safety_notes ?? data.precautions ?? data.safety_summary ?? localHerb?.precautions),
         });
       }
       setLoading(false);
@@ -367,93 +389,139 @@ export default function HerbDetailScreen() {
 
             {activeTab === 'benefits' && (
               <View style={styles.listContainer}>
-                {herb.benefits.map((benefit, i) => (
-                  <StaggerSection key={i} index={i}>
-                    <View style={styles.listItem}>
-                      <Sparkles size={16} color={colors.accent} style={styles.listIcon} />
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{benefit}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
+                {herb.benefits.length > 0 ? (
+                  herb.benefits.map((benefit, i) => (
+                    <StaggerSection key={i} index={i}>
+                      <View style={styles.listItem}>
+                        <Sparkles size={16} color={colors.accent} style={styles.listIcon} />
+                        <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{benefit}</Text>
+                      </View>
+                    </StaggerSection>
+                  ))
+                ) : (
+                  <Text style={[styles.bodyText, { color: colors.textMuted, textAlign: 'center', marginTop: 24, fontStyle: 'italic' }]}>
+                    No benefits have been added yet.
+                  </Text>
+                )}
               </View>
             )}
 
             {activeTab === 'preparation' && (
               <>
-                <StaggerSection index={0}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>How to Prepare</Text>
-                </StaggerSection>
-                {herb.preparation.map((step, i) => (
-                  <StaggerSection key={i} index={i + 1}>
-                    <View style={styles.stepItem}>
-                      <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
-                        <Text style={styles.stepNumText}>{i + 1}</Text>
-                      </View>
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{step}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
-                <StaggerSection index={herb.preparation.length + 1}>
-                  <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Other Ways to Use</Text>
-                </StaggerSection>
-                {herb.howToUse.map((use, i) => (
-                  <StaggerSection key={i} index={i + herb.preparation.length + 2}>
-                    <View style={styles.listItem}>
-                      <CheckCircle size={16} color={colors.primary} style={styles.listIcon} />
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{use}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
+                {herb.preparation.length > 0 || herb.howToUse.length > 0 ? (
+                  <>
+                    {herb.preparation.length > 0 && (
+                      <>
+                        <StaggerSection index={0}>
+                          <Text style={[styles.sectionTitle, { color: colors.text }]}>How to Prepare</Text>
+                        </StaggerSection>
+                        {herb.preparation.map((step, i) => (
+                          <StaggerSection key={i} index={i + 1}>
+                            <View style={styles.stepItem}>
+                              <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.stepNumText}>{i + 1}</Text>
+                              </View>
+                              <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{step}</Text>
+                            </View>
+                          </StaggerSection>
+                        ))}
+                      </>
+                    )}
+                    {herb.howToUse.length > 0 && (
+                      <>
+                        <StaggerSection index={herb.preparation.length + 1}>
+                          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Other Ways to Use</Text>
+                        </StaggerSection>
+                        {herb.howToUse.map((use, i) => (
+                          <StaggerSection key={i} index={i + herb.preparation.length + 2}>
+                            <View style={styles.listItem}>
+                              <CheckCircle size={16} color={colors.primary} style={styles.listIcon} />
+                              <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{use}</Text>
+                            </View>
+                          </StaggerSection>
+                        ))}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <Text style={[styles.bodyText, { color: colors.textMuted, textAlign: 'center', marginTop: 24, fontStyle: 'italic', paddingHorizontal: 24 }]}>
+                    No preparation instructions have been added yet.
+                  </Text>
+                )}
               </>
             )}
 
             {activeTab === 'safety' && (
               <>
-                <StaggerSection index={0}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Precautions</Text>
-                </StaggerSection>
-                {herb.precautions.map((item, i) => (
-                  <StaggerSection key={i} index={i + 1}>
-                    <View style={styles.listItem}>
-                      <Info size={16} color={colors.warning} style={styles.listIcon} />
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
-                <StaggerSection index={herb.precautions.length + 1}>
-                  <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Side Effects</Text>
-                </StaggerSection>
-                {herb.sideEffects.map((item, i) => (
-                  <StaggerSection key={i} index={i + herb.precautions.length + 2}>
-                    <View style={styles.listItem}>
-                      <AlertTriangle size={16} color={colors.warning} style={styles.listIcon} />
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
-                <StaggerSection index={herb.precautions.length + herb.sideEffects.length + 2}>
-                  <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Drug Interactions</Text>
-                </StaggerSection>
-                {herb.drugInteractions.map((item, i) => (
-                  <StaggerSection key={i} index={i + herb.precautions.length + herb.sideEffects.length + 3}>
-                    <View style={styles.listItem}>
-                      <AlertTriangle size={16} color="#E53935" style={styles.listIcon} />
-                      <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
-                    </View>
-                  </StaggerSection>
-                ))}
-                <StaggerSection index={herb.precautions.length + herb.sideEffects.length + herb.drugInteractions.length + 3}>
-                  <View style={[styles.safetyBlock, { backgroundColor: '#FFF3E0', borderColor: '#FFB74D44' }]}>
-                    <Text style={styles.safetyBlockTitle}>🤰 Pregnancy & Breastfeeding</Text>
-                    <Text style={[styles.bodyText, { color: '#5D4037' }]}>{herb.pregnancy}</Text>
-                  </View>
-                </StaggerSection>
-                <StaggerSection index={herb.precautions.length + herb.sideEffects.length + herb.drugInteractions.length + 4}>
-                  <View style={[styles.safetyBlock, { backgroundColor: '#E8F5E9', borderColor: '#81C78444' }]}>
-                    <Text style={styles.safetyBlockTitle}>👶 Children</Text>
-                    <Text style={[styles.bodyText, { color: '#2E7D32' }]}>{herb.children}</Text>
-                  </View>
-                </StaggerSection>
+                {herb.precautions.length > 0 || herb.sideEffects.length > 0 || herb.drugInteractions.length > 0 || herb.pregnancy || herb.children ? (
+                  <>
+                    {herb.precautions.length > 0 && (
+                      <>
+                        <StaggerSection index={0}>
+                          <Text style={[styles.sectionTitle, { color: colors.text }]}>Precautions</Text>
+                        </StaggerSection>
+                        {herb.precautions.map((item, i) => (
+                          <StaggerSection key={i} index={i + 1}>
+                            <View style={styles.listItem}>
+                              <Info size={16} color={colors.warning} style={styles.listIcon} />
+                              <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
+                            </View>
+                          </StaggerSection>
+                        ))}
+                      </>
+                    )}
+                    {herb.sideEffects.length > 0 && (
+                      <>
+                        <StaggerSection index={herb.precautions.length + 1}>
+                          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Side Effects</Text>
+                        </StaggerSection>
+                        {herb.sideEffects.map((item, i) => (
+                          <StaggerSection key={i} index={i + herb.precautions.length + 2}>
+                            <View style={styles.listItem}>
+                              <AlertTriangle size={16} color={colors.warning} style={styles.listIcon} />
+                              <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
+                            </View>
+                          </StaggerSection>
+                        ))}
+                      </>
+                    )}
+                    {herb.drugInteractions.length > 0 && (
+                      <>
+                        <StaggerSection index={herb.precautions.length + herb.sideEffects.length + 2}>
+                          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Drug Interactions</Text>
+                        </StaggerSection>
+                        {herb.drugInteractions.map((item, i) => (
+                          <StaggerSection key={i} index={i + herb.precautions.length + herb.sideEffects.length + 3}>
+                            <View style={styles.listItem}>
+                              <AlertTriangle size={16} color="#E53935" style={styles.listIcon} />
+                              <Text style={[styles.bodyText, { color: colors.text, flex: 1 }]}>{item}</Text>
+                            </View>
+                          </StaggerSection>
+                        ))}
+                      </>
+                    )}
+                    {herb.pregnancy ? (
+                      <StaggerSection index={herb.precautions.length + herb.sideEffects.length + herb.drugInteractions.length + 3}>
+                        <View style={[styles.safetyBlock, { backgroundColor: '#FFF3E0', borderColor: '#FFB74D44' }]}>
+                          <Text style={styles.safetyBlockTitle}>🤰 Pregnancy & Breastfeeding</Text>
+                          <Text style={[styles.bodyText, { color: '#5D4037' }]}>{herb.pregnancy}</Text>
+                        </View>
+                      </StaggerSection>
+                    ) : null}
+                    {herb.children ? (
+                      <StaggerSection index={herb.precautions.length + herb.sideEffects.length + herb.drugInteractions.length + 4}>
+                        <View style={[styles.safetyBlock, { backgroundColor: '#E8F5E9', borderColor: '#81C78444' }]}>
+                          <Text style={styles.safetyBlockTitle}>👶 Children</Text>
+                          <Text style={[styles.bodyText, { color: '#2E7D32' }]}>{herb.children}</Text>
+                        </View>
+                      </StaggerSection>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={[styles.bodyText, { color: colors.textMuted, textAlign: 'center', marginTop: 24, fontStyle: 'italic', paddingHorizontal: 24 }]}>
+                    No safety information has been added yet.
+                  </Text>
+                )}
                 {herb.sources.length > 0 && (
                   <StaggerSection index={herb.precautions.length + herb.sideEffects.length + herb.drugInteractions.length + 5}>
                     <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>Research Sources</Text>
