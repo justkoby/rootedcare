@@ -95,7 +95,7 @@ export const herbs: Herb[] = [
       { title: 'Ginger — an herbal medicinal product with broad anti-inflammatory actions', author: 'Grzanna R et al.', year: 2005 },
       { title: 'Effectiveness of Ginger on Nausea and Vomiting', author: 'Viljoen E et al.', year: 2014 },
     ],
-    image: require('../assets/herbs/ginger.png'),
+    image: require('../assets/herbs/ginger.jpg'),
   },
   {
     id: 'moringa',
@@ -153,7 +153,7 @@ export const herbs: Herb[] = [
       { title: 'Moringa oleifera: A review on nutritional value', author: 'Gopalakrishnan L et al.', year: 2016 },
       { title: 'Anti-inflammatory properties of Moringa', author: 'Minaiyan M et al.', year: 2014 },
     ],
-    image: require('../assets/herbs/moringa.png'),
+    image: require('../assets/herbs/moringa.jpg'),
   },
   {
     id: 'neem',
@@ -210,7 +210,7 @@ export const herbs: Herb[] = [
       { title: 'Neem (Azadirachta indica): A plant with multiple medicinal uses', author: 'Alzohairy MA.', year: 2016 },
       { title: 'Antibacterial activity of neem leaf extracts', author: 'Biswas K et al.', year: 2002 },
     ],
-    image: require('../assets/herbs/neem.png'),
+    image: require('../assets/herbs/neem.jpg'),
   },
   {
     id: 'prekese',
@@ -266,7 +266,7 @@ export const herbs: Herb[] = [
       { title: 'Phytochemical analysis and biological activity of Tetrapleura tetraptera', author: 'Ezeja M et al.', year: 2011 },
       { title: 'Antihypertensive effects of Tetrapleura tetraptera', author: 'Asuzu IU et al.', year: 1999 },
     ],
-    image: require('../assets/herbs/prekese.png'),
+    image: require('../assets/herbs/prekese.jpg'),
   },
   {
     id: 'hibiscus',
@@ -324,6 +324,6 @@ export const herbs: Herb[] = [
       { title: 'Hibiscus sabdariffa L. as a source of bioactive compounds', author: 'Da-Costa-Rocha I et al.', year: 2014 },
       { title: 'Effect of Hibiscus tea on blood pressure', author: 'McKay DL et al.', year: 2010 },
     ],
-    image: require('../assets/herbs/hibiscus.png'),
+    image: require('../assets/herbs/hibiscus.jpg'),
   },
 ];
