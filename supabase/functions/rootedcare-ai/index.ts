@@ -59,6 +59,17 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // ── 0. Read configurable rate limit from app_config ──
+    let dailyLimit = 20;
+    try {
+      const { data: cfg } = await supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'ai_rate_limit_per_day')
+        .maybeSingle();
+      if (cfg?.value) dailyLimit = parseInt(cfg.value, 10) || 20;
+    } catch { /* fall back to default */ }
+
     // ── 1. Safety classification ──
     const safety = await classifySafety(message, GROQ_API_KEY);
     const safetyLevel = safety.safety_level;
@@ -85,9 +96,9 @@ serve(async (req) => {
         .eq('user_id', user_id)
         .gte('created_at', new Date(Date.now() - 86400000).toISOString());
 
-      if (count && count >= 20) {
+      if (count && count >= dailyLimit) {
         return new Response(
-          JSON.stringify({ error: 'Daily limit of 20 questions reached. Please try again tomorrow.' }),
+          JSON.stringify({ error: `Daily limit of ${dailyLimit} questions reached. Please try again tomorrow.` }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
@@ -99,13 +110,14 @@ serve(async (req) => {
     const [herbRes, wellnessRes, articleRes] = await Promise.all([
       supabase
         .from('herbs')
-        .select('id, name, slug, image_url, summary, benefits, scientific_name')
+        .select('id, name, slug, image_url, summary, benefits, scientific_name, short_description')
         .eq('is_published', true)
         .or([
           `name.ilike.%${term}%`,
           `common_name.ilike.%${term}%`,
           `scientific_name.ilike.%${term}%`,
           `summary.ilike.%${term}%`,
+          `short_description.ilike.%${term}%`,
           `benefits.ilike.%${term}%`,
         ].join(','))
         .limit(5) as Promise<{ data: DbHerb[] | null }>,

@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RootedCare Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #C97A4A;
+      --primary-dk: #8B4A2B;
+      --accent:     #5D8A58;
+      --accent-lt:  #729E6C;
+      --bg:         #0D0B09;
+      --surface:    #1A1512;
+      --card:       #231E1A;
+      --border:     #2E2724;
+      --text:       #F3EFEB;
+      --muted:      #A59E96;
+      --danger:     #C0392B;
+      --success:    #5D8A58;
+      --warning:    #E8A63D;
+      --sidebar-w:  240px;
+      --header-h:   60px;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── SETUP / LOGIN OVERLAY ── */
+    #overlay {
+      position: fixed; inset: 0; z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 30% 40%, rgba(139,74,43,.25) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 70%, rgba(93,138,88,.15) 0%, transparent 55%),
+                  var(--bg);
+    }
+    #overlay.hidden { display: none; }
+    .auth-card {
+      width: 420px; max-width: 95vw;
+      background: rgba(35,30,26,.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+    }
+    .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+    .auth-logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary-dk), var(--primary));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .auth-logo h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+    .auth-logo p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .auth-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .auth-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .field-hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; border: none; transition: all .2s; font-family: inherit;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--primary-dk), var(--primary)); color: #fff; }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(201,122,74,.3); }
+    .btn-ghost { background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); }
+    .btn-danger { background: rgba(192,57,43,.15); color: #e74c3c; border: 1px solid rgba(192,57,43,.3); }
+    .btn-danger:hover { background: rgba(192,57,43,.25); }
+    .btn-success { background: rgba(93,138,88,.15); color: var(--accent-lt); border: 1px solid rgba(93,138,88,.3); }
+    .btn-success:hover { background: rgba(93,138,88,.25); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 7px; }
+    .btn-block { width: 100%; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+    .error-msg { color: #e74c3c; font-size: 13px; margin-top: 12px; padding: 10px 14px; background: rgba(192,57,43,.12); border-radius: 8px; display: none; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .text-link { color: var(--primary); font-size: 13px; cursor: pointer; text-decoration: underline; }
+
+    /* ── SHELL ── */
+    #shell { display: none; height: 100vh; overflow: hidden; }
+    #shell.visible { display: flex; }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary-dk), var(--primary));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .sidebar-logo-text h2 { font-size: 14px; font-weight: 700; }
+    .sidebar-logo-text p { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .nav-section-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; padding: 8px 10px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px; margin-bottom: 2px;
+      cursor: pointer; transition: all .15s; font-size: 13.5px; font-weight: 500;
+      color: var(--muted); text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
+    .nav-item.active { background: rgba(201,122,74,.15); color: var(--primary); }
+    .nav-icon { width: 20px; text-align: center; font-size: 15px; }
+    .nav-badge {
+      margin-left: auto; background: var(--primary); color: #fff;
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+    }
+    .sidebar-footer {
+      padding: 14px 10px;
+      border-top: 1px solid var(--border);
+    }
+    .user-info {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+    }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-dk), var(--primary));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; flex-shrink: 0;
+    }
+    .user-meta { flex: 1; overflow: hidden; }
+    .user-meta .email { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-meta .role { font-size: 10px; color: var(--primary); font-weight: 600; }
+
+    /* ── MAIN ── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      height: var(--header-h); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .topbar-title { font-size: 18px; font-weight: 700; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+    /* ── CONTENT AREA ── */
+    #content { flex: 1; overflow-y: auto; padding: 28px; }
+
+    /* ── STATS GRID ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, transparent 60%, rgba(201,122,74,.06));
+    }
+    .stat-icon { font-size: 22px; margin-bottom: 12px; }
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-sub { font-size: 11px; color: var(--primary); margin-top: 4px; font-weight: 500; }
+
+    /* ── TABLE ── */
+    .table-toolbar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1; min-width: 200px; max-width: 340px;
+      padding: 9px 14px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text); font-size: 13px; font-family: inherit; outline: none;
+    }
+    .search-box:focus { border-color: var(--primary); }
+    .filter-chip {
+      padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--card); color: var(--muted); transition: all .15s;
+    }
+    .filter-chip.active { background: rgba(201,122,74,.15); border-color: var(--primary); color: var(--primary); }
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th {
+      padding: 13px 16px; text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .6px;
+      background: rgba(255,255,255,.02); border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,.025); }
+    tbody td { padding: 12px 16px; vertical-align: middle; }
+    .td-img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: var(--surface); }
+    .td-img-placeholder { width: 36px; height: 36px; border-radius: 8px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .td-name { font-weight: 600; }
+    .td-slug { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge-published { background: rgba(93,138,88,.15); color: var(--accent-lt); }
+    .badge-draft { background: rgba(165,158,150,.12); color: var(--muted); }
+    .badge-featured { background: rgba(232,166,61,.15); color: var(--warning); }
+    .td-actions { display: flex; gap: 6px; align-items: center; }
+    .icon-btn {
+      width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+      transition: all .15s;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .icon-btn.active { background: rgba(232,166,61,.15); border-color: var(--warning); color: var(--warning); }
+    .toggle-btn {
+      width: 38px; height: 22px; border-radius: 11px; border: none; cursor: pointer;
+      transition: background .2s; position: relative; flex-shrink: 0;
+    }
+    .toggle-btn::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      transition: transform .2s;
+    }
+    .toggle-btn.on { background: var(--accent); }
+    .toggle-btn.on::after { transform: translateX(16px); }
+    .toggle-btn.off { background: var(--border); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; margin-bottom: 6px; }
+    .empty-state p { font-size: 13px; color: var(--muted); }
+
+    /* ── SLIDE-OVER PANEL ── */
+    #panel-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    #panel-overlay.open { display: flex; }
+    #panel {
+      width: 480px; max-width: 95vw;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      animation: slideIn .25s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .panel-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .panel-header h2 { font-size: 16px; font-weight: 700; }
+    .panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+    .panel-footer {
+      padding: 16px 24px; border-top: 1px solid var(--border);
+      display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
+    }
+
+    /* ── TOAST ── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+      animation: fadeUp .3s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-success { background: rgba(93,138,88,.9); color: #fff; }
+    .toast-error   { background: rgba(192,57,43,.9); color: #fff; }
+    .toast-info    { background: rgba(201,122,74,.9); color: #fff; }
+
+    /* ── MISC ── */
+    .section-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .row { display: flex; gap: 16px; }
+    .row .field { flex: 1; }
+    .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 14px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .recent-table { width: 100%; font-size: 13px; }
+    .recent-table td { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .recent-table tr:last-child td { border-bottom: none; }
+    .incomplete-row { background: rgba(232,166,61,.05) !important; }
+    .incomplete-badge { color: var(--warning); font-size: 10px; font-weight: 700; margin-left: 6px; }
+    .config-grid { display: grid; gap: 12px; }
+    .config-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px;
+    }
+    .config-key { font-size: 13px; font-weight: 600; }
+    .config-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .config-input {
+      width: 120px; padding: 7px 10px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 13px; font-family: inherit; outline: none; text-align: right;
+    }
+    .config-input:focus { border-color: var(--primary); }
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 14px; padding: 40px;
+      text-align: center; cursor: pointer; transition: border-color .2s;
+    }
+    .upload-zone:hover { border-color: var(--primary); }
+    .upload-zone.drag { border-color: var(--primary); background: rgba(201,122,74,.05); }
+    .upload-icon { font-size: 36px; margin-bottom: 12px; }
+    .upload-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 20px; }
+    .upload-thumb {
+      aspect-ratio: 1; border-radius: 10px; object-fit: cover;
+      background: var(--card); border: 1px solid var(--border);
+      cursor: pointer; transition: transform .2s;
+    }
+    .upload-thumb:hover { transform: scale(1.03); }
+    .tab-bar { display: flex; gap: 4px; background: var(--card); border-radius: 12px; padding: 4px; margin-bottom: 20px; border: 1px solid var(--border); }
+    .tab { flex: 1; padding: 8px; text-align: center; border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); transition: all .15s; }
+    .tab.active { background: rgba(201,122,74,.15); color: var(--primary); }
+    .progress { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary-dk), var(--primary)); border-radius: 2px; transition: width .3s; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ LOGIN / SETUP OVERLAY ═══ -->
+<div id="overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🌿</div>
+      <div>
+        <h1>RootedCare</h1>
+        <p>Admin Dashboard</p>
+      </div>
+    </div>
+
+    <!-- Step 1: Credentials setup -->
+    <div id="setup-step">
+      <p class="auth-title">Connect to Supabase</p>
+      <p class="auth-subtitle">Enter your project credentials. They are stored only in this browser tab and cleared when you close it.</p>
+      <div class="field">
+        <label>Supabase URL</label>
+        <input id="setup-url" type="url" placeholder="https://xxxx.supabase.co" value="https://lorhtrsyaaepmmffjogj.supabase.co" />
+      </div>
+      <div class="field">
+        <label>Publishable Key (anon)</label>
+        <input id="setup-anon" type="text" placeholder="sb_publishable_..." value="sb_publishable_bkJO8B37tBn7xkraNhEaxg_zO3c6_lz" />
+      </div>
+      <div class="field">
+        <label>Service Role Key <span style="color:var(--warning)">★</span></label>
+        <input id="setup-service" type="password" placeholder="eyJhbGci..." />
+        <p class="field-hint">Found in Supabase → Settings → API → <strong>service_role</strong> secret. This key is your admin access — no separate login needed.</p>
+      </div>
+      <button class="btn btn-primary btn-block" id="connect-btn" onclick="setupConnect()">Connect →</button>
+      <div class="error-msg" id="setup-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN SHELL ═══ -->
+<div id="shell">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-icon">🌿</div>
+      <div class="sidebar-logo-text">
+        <h2>RootedCare</h2>
+        <p>Admin Panel</p>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Content</div>
+      <div class="nav-item active" data-section="dashboard" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" data-section="herbs" onclick="navTo('herbs',this)"><span class="nav-icon">🌿</span> Herbs <span class="nav-badge" id="nav-herbs-badge"></span></div>
+      <div class="nav-item" data-section="wellness" onclick="navTo('wellness',this)"><span class="nav-icon">🧘</span> Wellness <span class="nav-badge" id="nav-wellness-badge"></span></div>
+      <div class="nav-item" data-section="articles" onclick="navTo('articles',this)"><span class="nav-icon">📰</span> Articles <span class="nav-badge" id="nav-articles-badge"></span></div>
+      <div class="nav-section-label" style="margin-top:8px">System</div>
+      <div class="nav-item" data-section="images" onclick="navTo('images',this)"><span class="nav-icon">🖼️</span> Images</div>
+      <div class="nav-item" data-section="aiconfig" onclick="navTo('aiconfig',this)"><span class="nav-icon">🤖</span> AI Config</div>
+      <div class="nav-item" data-section="users" onclick="navTo('users',this)"><span class="nav-icon">👥</span> Users</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-meta">
+          <div class="email" id="user-email-display">—</div>
+          <div class="role">Admin</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-block" style="margin-top:8px" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div id="content">
+      <div class="loading"><span class="spinner"></span> Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE-OVER PANEL -->
+<div id="panel-overlay" onclick="closePanel(event)">
+  <div id="panel">
+    <div class="panel-header">
+      <h2 id="panel-title">Edit</h2>
+      <button class="icon-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-footer" id="panel-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- ═══ APP SCRIPT ═══ -->
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// ── State ──────────────────────────────────────────────
+let supabase = null;   // anon/publishable client (auth)
+let admin    = null;   // service-role client (data)
+let currentSection = 'dashboard';
+let currentUser = null;
+
+const STORAGE_KEY = 'rc_admin_cfg';
+
+// ── Boot ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', boot);
+
+async function boot() {
+  const saved = getSavedConfig();
+  if (saved) {
+    initClients(saved.url, saved.anon, saved.service);
+    // Verify saved key still works with a quick test query
+    const { error } = await admin.from('herbs').select('id', { count: 'exact', head: true });
+    if (!error) { showShell(); return; }
+    // Key is stale — clear and show setup
+    sessionStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+// ── Config helpers ─────────────────────────────────────
+function getSavedConfig() {
+  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+function saveConfig(c) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(c)); }
+function initClients(url, anon, service) {
+  supabase = createClient(url, anon);
+  admin    = createClient(url, service);
+}
+
+// ── Setup step ─────────────────────────────────────────
+window.setupConnect = async function() {
+  const url     = document.getElementById('setup-url').value.trim();
+  const anon    = document.getElementById('setup-anon').value.trim();
+  const service = document.getElementById('setup-service').value.trim();
+  const err     = document.getElementById('setup-error');
+  const btn     = document.getElementById('connect-btn');
+  err.style.display = 'none';
+  if (!url || !anon || !service) { showErr(err, 'All three fields are required.'); return; }
+  if (!url.startsWith('https://')) { showErr(err, 'URL must start with https://'); return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  initClients(url, anon, service);
+
+  // Verify the service role key works
+  const { error } = await admin.from('herbs').select('id', { count: 'exact', head: true });
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Connect →';
+    showErr(err, 'Could not connect. Check your service role key and Supabase URL.');
+    return;
+  }
+
+  saveConfig({ url, anon, service });
+  showShell();
+};
+
+window.resetSetup = function() {
+  sessionStorage.removeItem(STORAGE_KEY);
+  location.reload();
+};
+
+window.doLogout = function() {
+  sessionStorage.removeItem(STORAGE_KEY);
+  location.reload();
+};
+
+function showShell() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('shell').classList.add('visible');
+  const cfg = getSavedConfig();
+  const label = cfg?.url?.replace('https://', '').split('.')[0] || 'Admin';
+  document.getElementById('user-email-display').textContent = label + '.supabase.co';
+  document.getElementById('user-avatar').textContent = '★';
+  navTo('dashboard', document.querySelector('[data-section="dashboard"]'));
+  loadNavBadges();
+}
+
+// ── Navigation ─────────────────────────────────────────
+window.navTo = function(section, el) {
+  currentSection = section;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = sectionTitle(section);
+  document.getElementById('topbar-actions').innerHTML = '';
+  renderSection(section);
+};
+
+function sectionTitle(s) {
+  return { dashboard:'Dashboard', herbs:'Herbs', wellness:'Wellness', articles:'Articles',
+           images:'Images', aiconfig:'AI Configuration', users:'Users' }[s] || s;
+}
+
+async function loadNavBadges() {
+  const [h, w, a] = await Promise.all([
+    admin.from('herbs').select('id', { count:'exact', head:true }).eq('is_published', false),
+    admin.from('wellness_concerns').select('id', { count:'exact', head:true }).eq('is_published', false),
+    admin.from('articles').select('id', { count:'exact', head:true }).eq('is_published', false),
+  ]);
+  setBadge('nav-herbs-badge', h.count);
+  setBadge('nav-wellness-badge', w.count);
+  setBadge('nav-articles-badge', a.count);
+}
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count > 0 ? count : '';
+  el.style.display = count > 0 ? '' : 'none';
+}
+
+// ── Render sections ────────────────────────────────────
+async function renderSection(section) {
+  const content = document.getElementById('content');
+  content.innerHTML = `<div class="loading"><span class="spinner"></span> Loading…</div>`;
+  try {
+    switch(section) {
+      case 'dashboard': await renderDashboard(); break;
+      case 'herbs':     await renderContentTable('herbs',            'Herbs',    '🌿'); break;
+      case 'wellness':  await renderContentTable('wellness_concerns','Wellness', '🧘'); break;
+      case 'articles':  await renderContentTable('articles',         'Articles', '📰', true); break;
+      case 'images':    await renderImages(); break;
+      case 'aiconfig':  await renderAiConfig(); break;
+      case 'users':     await renderUsers(); break;
+    }
+  } catch(e) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error loading section</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────────────
+async function renderDashboard() {
+  const [h, hp, hf, w, wp, wf, a, ap, af, u] = await Promise.all([
+    admin.from('herbs').select('id', { count:'exact', head:true }),
+    admin.from('herbs').select('id', { count:'exact', head:true }).eq('is_published', true),
+    admin.from('herbs').select('id', { count:'exact', head:true }).eq('is_featured', true),
+    admin.from('wellness_concerns').select('id', { count:'exact', head:true }),
+    admin.from('wellness_concerns').select('id', { count:'exact', head:true }).eq('is_published', true),
+    admin.from('wellness_concerns').select('id', { count:'exact', head:true }).eq('is_featured', true),
+    admin.from('articles').select('id', { count:'exact', head:true }),
+    admin.from('articles').select('id', { count:'exact', head:true }).eq('is_published', true),
+    admin.from('articles').select('id', { count:'exact', head:true }).eq('is_featured', true),
+    admin.from('user_profiles').select('id', { count:'exact', head:true }),
+  ]);
+
+  const drafts = (h.count - hp.count) + (w.count - wp.count) + (a.count - ap.count);
+
+  // Recent herbs (incomplete = no image or no summary)
+  const { data: incomplete } = await admin.from('herbs')
+    .select('id, name, slug, image_url, summary')
+    .or('image_url.is.null,summary.is.null')
+    .limit(6);
+
+  document.getElementById('content').innerHTML = `
+    <div class="stats-grid">
+      ${statCard('🌿', h.count, 'Total Herbs',         `${hp.count} published · ${hf.count} featured`)}
+      ${statCard('🧘', w.count, 'Wellness Guides',     `${wp.count} published · ${wf.count} featured`)}
+      ${statCard('📰', a.count, 'Articles',             `${ap.count} published · ${af.count} featured`)}
+      ${statCard('✏️', drafts,  'Pending Drafts',      'Awaiting publish')}
+      ${statCard('👥', u.count ?? '—', 'Registered Users', 'All time')}
+    </div>
+
+    <p class="section-title">Incomplete Herb Records</p>
+    <div class="table-wrap" style="margin-bottom:28px">
+      ${incomplete?.length ? `
+      <table>
+        <thead><tr><th></th><th>Name</th><th>Slug</th><th>Missing</th><th>Action</th></tr></thead>
+        <tbody>
+        ${incomplete.map(h => `
+          <tr class="incomplete-row">
+            <td>${h.image_url ? `<img class="td-img" src="${h.image_url}" />` : `<div class="td-img-placeholder">🌿</div>`}</td>
+            <td><div class="td-name">${h.name}</div></td>
+            <td><div class="td-slug">${h.slug}</div></td>
+            <td>
+              ${!h.image_url ? `<span class="badge badge-draft">No image</span> ` : ''}
+              ${!h.summary ? `<span class="badge badge-draft">No summary</span>` : ''}
+            </td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openEditPanel('herbs','${h.id}')">Edit</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>All herbs are complete!</h3></div>`}
+    </div>
+
+    <p class="section-title">Quick Actions</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="navTo('herbs',document.querySelector('[data-section=herbs]'))">Manage Herbs →</button>
+      <button class="btn btn-ghost" onclick="navTo('wellness',document.querySelector('[data-section=wellness]'))">Manage Wellness →</button>
+      <button class="btn btn-ghost" onclick="navTo('articles',document.querySelector('[data-section=articles]'))">Manage Articles →</button>
+      <button class="btn btn-ghost" onclick="navTo('aiconfig',document.querySelector('[data-section=aiconfig]'))">AI Config →</button>
+    </div>
+  `;
+}
+
+function statCard(icon, val, label, sub) {
+  return `<div class="stat-card">
+    <div class="stat-icon">${icon}</div>
+    <div class="stat-value">${val ?? '—'}</div>
+    <div class="stat-label">${label}</div>
+    <div class="stat-sub">${sub}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────
+// CONTENT TABLE (herbs / wellness / articles)
+// ─────────────────────────────────────────────────────
+let tableFilter = 'all';
+let tableSearch = '';
+
+async function renderContentTable(table, label, icon, isArticles = false) {
+  const btn = document.getElementById('topbar-actions');
+  btn.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openNewPanel('${table}','${isArticles}')">+ Add ${label.slice(0,-1)}</button>`;
+
+  let query = admin.from(table).select('*').order('name', { ascending: true });
+  if (isArticles) query = admin.from(table).select('*').order('title', { ascending: true });
+  if (tableFilter === 'published') query = query.eq('is_published', true);
+  if (tableFilter === 'draft')     query = query.eq('is_published', false);
+  if (tableFilter === 'featured')  query = query.eq('is_featured', true);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  let rows = data || [];
+  if (tableSearch) {
+    const s = tableSearch.toLowerCase();
+    rows = rows.filter(r => (r.name||r.title||'').toLowerCase().includes(s) || (r.slug||'').toLowerCase().includes(s));
+  }
+
+  const nameField = isArticles ? 'title' : 'name';
+  const imgField  = isArticles ? 'cover_image_url' : 'image_url';
+
+  document.getElementById('content').innerHTML = `
+    <div class="table-toolbar">
+      <input class="search-box" placeholder="Search ${label.toLowerCase()}…" value="${tableSearch}"
+        oninput="tableSearch=this.value;renderSection('${currentSection}')" />
+      <span class="filter-chip ${tableFilter==='all'?'active':''}" onclick="setFilter('all','${currentSection}')">All</span>
+      <span class="filter-chip ${tableFilter==='published'?'active':''}" onclick="setFilter('published','${currentSection}')">Published</span>
+      <span class="filter-chip ${tableFilter==='draft'?'active':''}" onclick="setFilter('draft','${currentSection}')">Drafts</span>
+      <span class="filter-chip ${tableFilter==='featured'?'active':''}" onclick="setFilter('featured','${currentSection}')">Featured</span>
+    </div>
+    <div class="table-wrap">
+      ${rows.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">${icon}</div><h3>No ${label.toLowerCase()} found</h3><p>Try a different filter or add new content.</p></div>` : `
+      <table>
+        <thead><tr><th></th><th>${isArticles?'Title':'Name'}</th><th>Status</th><th>Published</th><th>Featured</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${rows.map(row => rowHTML(row, table, nameField, imgField, isArticles)).join('')}
+        </tbody>
+      </table>`}
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">${rows.length} record${rows.length!==1?'s':''} shown</p>
+  `;
+}
+
+function rowHTML(row, table, nameField, imgField, isArticles) {
+  const name = row[nameField] || '—';
+  const img  = row[imgField];
+  return `<tr>
+    <td>${img ? `<img class="td-img" src="${img}" onerror="this.style.display='none'" />` : `<div class="td-img-placeholder">${isArticles?'📰':'🌿'}</div>`}</td>
+    <td>
+      <div class="td-name">${name}</div>
+      <div class="td-slug">${row.slug || ''}</div>
+    </td>
+    <td>
+      ${row.is_published
+        ? `<span class="badge badge-published">✓ Published</span>`
+        : `<span class="badge badge-draft">Draft</span>`}
+    </td>
+    <td>
+      <button class="toggle-btn ${row.is_published?'on':'off'}"
+        onclick="toggleField('${table}','${row.id}','is_published',${!row.is_published})">
+      </button>
+    </td>
+    <td>
+      <button class="toggle-btn ${row.is_featured?'on':'off'}"
+        onclick="toggleField('${table}','${row.id}','is_featured',${!row.is_featured})">
+      </button>
+    </td>
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openEditPanel('${table}','${row.id}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteRecord('${table}','${row.id}','${name.replace(/'/g,"\\'")}')">Delete</button>
+    </td>
+  </tr>`;
+}
+
+window.setFilter = function(f, section) {
+  tableFilter = f;
+  renderSection(section);
+};
+
+window.toggleField = async function(table, id, field, value) {
+  const { error } = await admin.from(table).update({ [field]: value }).eq('id', id);
+  if (error) { toast('Failed to update: ' + error.message, 'error'); return; }
+  toast(`${field === 'is_published' ? (value ? 'Published' : 'Unpublished') : (value ? 'Starred' : 'Unstarred')} successfully`, 'success');
+  await renderSection(currentSection);
+  await loadNavBadges();
+};
+
+window.deleteRecord = async function(table, id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const { error } = await admin.from(table).delete().eq('id', id);
+  if (error) { toast('Delete failed: ' + error.message, 'error'); return; }
+  toast(`Deleted "${name}"`, 'success');
+  await renderSection(currentSection);
+  await loadNavBadges();
+};
+
+// ─────────────────────────────────────────────────────
+// EDIT / NEW PANEL
+// ─────────────────────────────────────────────────────
+window.openEditPanel = async function(table, id) {
+  const { data, error } = await admin.from(table).select('*').eq('id', id).single();
+  if (error) { toast('Load failed: ' + error.message, 'error'); return; }
+  openPanel(table, data);
+};
+
+window.openNewPanel = function(table, isArticles) {
+  openPanel(table, null, isArticles === 'true');
+};
+
+function openPanel(table, record, isNew = false) {
+  const isArticles = table === 'articles';
+  document.getElementById('panel-title').textContent = isNew ? `New ${table.slice(0,-1)}` : `Edit ${table.slice(0,-1)}`;
+  document.getElementById('panel-body').innerHTML = panelFormHTML(table, record, isArticles);
+  document.getElementById('panel-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveRecord('${table}','${record?.id || ''}')">
+      ${isNew ? 'Create' : 'Save Changes'}
+    </button>
+  `;
+  document.getElementById('panel-overlay').classList.add('open');
+}
+
+function panelFormHTML(table, r, isArticles) {
+  const v = (f, def='') => r ? (r[f] ?? def) : def;
+  const checked = (f) => v(f, false) ? 'checked' : '';
+
+  if (isArticles) return `
+    <div class="field"><label>Title</label><input id="pf-title" value="${v('title')}" /></div>
+    <div class="field"><label>Slug</label><input id="pf-slug" value="${v('slug')}" /></div>
+    <div class="field"><label>Summary</label><textarea id="pf-summary">${v('summary')}</textarea></div>
+    <div class="field"><label>Cover Image URL</label><input id="pf-cover_image_url" value="${v('cover_image_url')}" /></div>
+    <div class="field"><label>Content (Markdown / text)</label><textarea id="pf-content" style="min-height:160px">${v('content')}</textarea></div>
+    <div class="row">
+      <div class="field"><label>Published</label>
+        <input type="checkbox" id="pf-is_published" ${checked('is_published')} style="width:auto;transform:scale(1.4);margin-top:8px" />
+      </div>
+      <div class="field"><label>Featured</label>
+        <input type="checkbox" id="pf-is_featured" ${checked('is_featured')} style="width:auto;transform:scale(1.4);margin-top:8px" />
+      </div>
+    </div>`;
+
+  return `
+    <div class="field"><label>Name</label><input id="pf-name" value="${v('name')}" /></div>
+    <div class="field"><label>Slug</label><input id="pf-slug" value="${v('slug')}" /></div>
+    ${table === 'herbs' ? `
+    <div class="field"><label>Scientific Name</label><input id="pf-scientific_name" value="${v('scientific_name')}" /></div>
+    <div class="field"><label>Common / Local Names</label><input id="pf-local_names" value="${v('local_names')}" /></div>` : ''}
+    <div class="field"><label>Image URL</label><input id="pf-image_url" value="${v('image_url')}" /></div>
+    <div class="field"><label>Short Description</label><textarea id="pf-short_description">${v('short_description')}</textarea></div>
+    <div class="field"><label>Summary / Overview</label><textarea id="pf-summary">${v('summary')}</textarea></div>
+    ${table === 'herbs' ? `
+    <div class="field"><label>Benefits (one per line)</label><textarea id="pf-benefits">${v('benefits')}</textarea></div>
+    <div class="field"><label>Preparation</label><textarea id="pf-preparation">${v('preparation')}</textarea></div>
+    <div class="field"><label>Safety / Precautions</label><textarea id="pf-safety_notes">${v('safety_notes')}</textarea></div>` : ''}
+    ${table === 'wellness_concerns' ? `
+    <div class="field"><label>Educational Guidance</label><textarea id="pf-educational_guidance" style="min-height:120px">${v('educational_guidance')}</textarea></div>` : ''}
+    <div class="row">
+      <div class="field"><label>Published</label>
+        <input type="checkbox" id="pf-is_published" ${checked('is_published')} style="width:auto;transform:scale(1.4);margin-top:8px" />
+      </div>
+      <div class="field"><label>Featured</label>
+        <input type="checkbox" id="pf-is_featured" ${checked('is_featured')} style="width:auto;transform:scale(1.4);margin-top:8px" />
+      </div>
+    </div>`;
+}
+
+window.saveRecord = async function(table, id) {
+  const fields = {};
+  document.querySelectorAll('[id^="pf-"]').forEach(el => {
+    const key = el.id.replace('pf-', '');
+    fields[key] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+
+  let error;
+  if (id) {
+    ({ error } = await admin.from(table).update(fields).eq('id', id));
+  } else {
+    ({ error } = await admin.from(table).insert(fields));
+  }
+  if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+  toast(id ? 'Saved successfully' : 'Created successfully', 'success');
+  closePanel();
+  await renderSection(currentSection);
+  await loadNavBadges();
+};
+
+window.closePanel = function(e) {
+  if (e && e.target !== document.getElementById('panel-overlay')) return;
+  document.getElementById('panel-overlay').classList.remove('open');
+};
+
+// ─────────────────────────────────────────────────────
+// IMAGES
+// ─────────────────────────────────────────────────────
+async function renderImages() {
+  document.getElementById('content').innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      Upload images to Supabase Storage. Copy the public URL and paste it into any herb, wellness, or article record.
+    </p>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">☁️</div>
+      <p style="font-weight:600;margin-bottom:4px">Click or drop images here</p>
+      <p style="font-size:12px;color:var(--muted)">PNG, JPG, WebP — up to 5 MB each</p>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="uploadFiles(this.files)" />
+    </div>
+    <div id="upload-progress" style="margin-top:12px;display:none">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Uploading…</p>
+      <div class="progress"><div class="progress-bar" id="upload-bar" style="width:0%"></div></div>
+    </div>
+    <div id="image-gallery"></div>
+  `;
+
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag'); uploadFiles(e.dataTransfer.files); });
+
+  await loadImageGallery();
+}
+
+async function loadImageGallery() {
+  const { data, error } = await admin.storage.from('content-images').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+  const gallery = document.getElementById('image-gallery');
+  if (!gallery) return;
+  if (error || !data?.length) {
+    gallery.innerHTML = '<p style="margin-top:20px;color:var(--muted);font-size:13px">No images uploaded yet.</p>';
+    return;
+  }
+  const cfg = getSavedConfig();
+  gallery.innerHTML = `<p class="section-title" style="margin-top:24px">Uploaded Images (${data.length})</p>
+    <div class="upload-gallery">
+      ${data.map(file => {
+        const url = `${cfg.url}/storage/v1/object/public/content-images/${file.name}`;
+        return `<div style="position:relative">
+          <img class="upload-thumb" src="${url}" title="${file.name}" onclick="copyURL('${url}')" />
+          <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${file.name}</p>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+window.uploadFiles = async function(files) {
+  if (!files?.length) return;
+  const prog = document.getElementById('upload-progress');
+  const bar  = document.getElementById('upload-bar');
+  prog.style.display = 'block';
+  let done = 0;
+  for (const file of files) {
+    const ext  = file.name.split('.').pop();
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await admin.storage.from('content-images').upload(name, file, { upsert: false });
+    if (error) { toast('Upload failed: ' + error.message, 'error'); }
+    else { toast(`Uploaded ${file.name}`, 'success'); }
+    done++;
+    bar.style.width = (done / files.length * 100) + '%';
+  }
+  setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 1200);
+  await loadImageGallery();
+};
+
+window.copyURL = function(url) {
+  navigator.clipboard.writeText(url);
+  toast('URL copied to clipboard', 'info');
+};
+
+// ─────────────────────────────────────────────────────
+// AI CONFIG
+// ─────────────────────────────────────────────────────
+async function renderAiConfig() {
+  const { data, error } = await admin.from('app_config').select('*').order('key');
+  if (error) throw error;
+
+  document.getElementById('content').innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      These values are stored in the <code style="background:var(--card);padding:2px 6px;border-radius:4px">app_config</code> table
+      and read by the AI Edge Function at runtime.
+    </p>
+    <div class="config-grid" id="config-grid">
+      ${(data || []).map(row => `
+        <div class="config-row">
+          <div>
+            <div class="config-key">${row.key}</div>
+            <div class="config-desc">${row.description || ''}</div>
+          </div>
+          <input class="config-input" id="cfg-${row.key}" value="${row.value}" />
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:20px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveAiConfig()">Save All</button>
+      <button class="btn btn-ghost" onclick="renderSection('aiconfig')">Reset</button>
+    </div>
+  `;
+}
+
+window.saveAiConfig = async function() {
+  const inputs = document.querySelectorAll('[id^="cfg-"]');
+  const updates = Array.from(inputs).map(el => ({
+    key: el.id.replace('cfg-', ''),
+    value: el.value
+  }));
+  let ok = true;
+  for (const u of updates) {
+    const { error } = await admin.from('app_config').update({ value: u.value }).eq('key', u.key);
+    if (error) { toast(`Failed to save ${u.key}: ${error.message}`, 'error'); ok = false; }
+  }
+  if (ok) toast('AI configuration saved', 'success');
+};
+
+// ─────────────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────────────
+async function renderUsers() {
+  // Use admin client to list profiles (service role bypasses RLS)
+  const { data: profiles, error } = await admin
+    .from('user_profiles')
+    .select('id, is_admin, full_name, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+
+  document.getElementById('content').innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      ${profiles?.length || 0} registered user${profiles?.length !== 1 ? 's' : ''}.
+    </p>
+    <div class="table-wrap">
+      ${!profiles?.length ? `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No users yet</h3></div>` : `
+      <table>
+        <thead><tr><th>User ID</th><th>Full Name</th><th>Admin</th><th>Joined</th></tr></thead>
+        <tbody>
+          ${profiles.map(p => `<tr>
+            <td><span style="font-family:monospace;font-size:11px;color:var(--muted)">${p.id.slice(0,12)}…</span></td>
+            <td>${p.full_name || '—'}</td>
+            <td>${p.is_admin ? '<span class="badge badge-featured">★ Admin</span>' : '<span class="badge badge-draft">User</span>'}</td>
+            <td style="font-size:12px;color:var(--muted)">${new Date(p.created_at).toLocaleDateString()}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+window.toast = function(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `${{ success:'✅', error:'❌', info:'ℹ️' }[type] || '•'} ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+};
+</script>
+</body>
+</html>
