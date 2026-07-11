@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, StatusBar,
-  useColorScheme, Image, ScrollView, Pressable,
+  useColorScheme, Image, ScrollView, Pressable, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
@@ -22,7 +22,8 @@ import {
   BookOpen, ChevronRight,
 } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
-import { herbs } from '../../data/herbs';
+import { herbs as hardcodedHerbs, Herb } from '../../data/herbs';
+import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/Button';
 import { HerbCard } from '../../components/HerbCard';
 import { useFavoriteStore } from '../../store/useFavoriteStore';
@@ -75,9 +76,34 @@ function HeartButton({ isFavorited, onPress }: { isFavorited: boolean; onPress: 
   );
 }
 
+const emptyHerb: Herb = {
+  id: '',
+  name: '',
+  scientificName: '',
+  localNames: {},
+  description: '',
+  overview: '',
+  activeCompounds: [],
+  benefits: [],
+  howToUse: [],
+  preparation: [],
+  dosage: '',
+  precautions: [],
+  sideEffects: [],
+  drugInteractions: [],
+  pregnancy: '',
+  children: '',
+  bestFor: [],
+  whenToTake: '',
+  symptoms: [],
+  relatedHerbIds: [],
+  sources: [],
+  image: require('../../assets/herbs/ginger.png'),
+};
+
 export default function HerbDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams(); // id is the slug
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[theme];
@@ -88,7 +114,44 @@ export default function HerbDetailScreen() {
   const toggleFavorite = useFavoriteStore((s) => s.toggleFavorite);
   const isFavorited = favorites.includes(id as string);
 
-  const herb = herbs.find(h => h.id === id);
+  const [herb, setHerb] = useState<Herb | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function fetchHerbDetails() {
+      if (!id) return;
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('herbs')
+        .select('*')
+        .eq('slug', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching herb details:', error);
+        setError('Unable to load details.');
+      } else if (!data) {
+        setError('Herb not found.');
+      } else {
+        const localHerb = hardcodedHerbs.find(lh => lh.id === data.slug) || emptyHerb;
+        setHerb({
+          ...localHerb,
+          id: data.slug || data.id,
+          name: data.common_name || data.name || localHerb?.name || '',
+          scientificName: data.scientific_name || localHerb?.scientificName || '',
+          description: data.description || data.summary || localHerb?.description || '',
+          overview: data.description || data.summary || localHerb?.overview || '',
+          bestFor: localHerb?.bestFor || [],
+          symptoms: localHerb?.symptoms || [],
+          localNames: localHerb?.localNames || {},
+          image: data.image_url ? { uri: data.image_url } : (localHerb?.image || require('../../assets/herbs/ginger.png')),
+        });
+      }
+      setLoading(false);
+    }
+    fetchHerbDetails();
+  }, [id]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -135,16 +198,25 @@ export default function HerbDetailScreen() {
     return { opacity };
   });
 
-  if (!herb) {
+  if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={[styles.errorText, { color: colors.text }]}>Herb not found</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', gap: 15 }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textMuted }}>Loading herb details...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !herb) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', gap: 15 }]}>
+        <Text style={[styles.errorText, { color: '#EF4444' }]}>{error || 'Herb not found'}</Text>
         <Button title="Go Back" variant="primary" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
 
-  const relatedHerbs = herbs.filter(h => herb.relatedHerbIds.includes(h.id));
+  const relatedHerbs = hardcodedHerbs.filter(h => herb.relatedHerbIds?.includes(h.id));
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'overview',    label: 'Overview'    },
@@ -216,12 +288,12 @@ export default function HerbDetailScreen() {
                 <Text style={[styles.localNamesTitle, { color: colors.text }]}>Local Names</Text>
               </View>
               <View style={styles.localNamesGrid}>
-                {Object.entries(herb.localNames).map(([lang, name]) => (
+                {Object.entries(herb.localNames as Record<string, string>).map(([lang, name]) => (
                   <View key={lang} style={styles.localNameItem}>
                     <Text style={[styles.localNameLang, { color: colors.textMuted }]}>
                       {lang.charAt(0).toUpperCase() + lang.slice(1)}
                     </Text>
-                    <Text style={[styles.localNameValue, { color: colors.text }]}>{name}</Text>
+                    <Text style={[styles.localNameValue, { color: colors.text }]}>{name || ''}</Text>
                   </View>
                 ))}
               </View>
