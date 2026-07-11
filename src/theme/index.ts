@@ -1,5 +1,5 @@
 import { Colors } from '../constants/Colors';
-import { DefaultTheme as ExpoDefaultTheme, DarkTheme as ExpoDarkTheme } from '@react-navigation/native';
+import { DefaultTheme as ExpoDefaultTheme, DarkTheme as ExpoDarkTheme } from 'expo-router';
 
 export const LightTheme = {
   ...ExpoDefaultTheme,
