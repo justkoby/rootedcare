@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, StatusBar,
-  useColorScheme, ScrollView, Pressable, Image,
+  useColorScheme, ScrollView, Pressable, Image, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Home as HomeIcon, Search, Calendar, BookOpen, User, Clock } from 'lucide-react-native';
 import { Colors } from '../constants/Colors';
 import { herbs } from '../data/herbs';
 import { AnimatedTabBar } from '../components/animations';
+import { getArticles } from '../services/articles';
 
 const TAB_CONFIG = [
   { key: 'home',     icon: <HomeIcon />,   label: 'Home'    },
@@ -19,22 +20,14 @@ const TAB_CONFIG = [
 
 type Tab = 'All' | 'Herbs' | 'Wellness' | 'Cycle' | 'Nutrition';
 
-interface Article {
-  id: string;
-  tag: string;
-  title: string;
-  duration: string;
-  herbId?: string;
-  featured?: boolean;
-}
-
-const ARTICLES: Article[] = [
-  { id: '1', tag: 'FEATURED', title: 'The Power of Ginger: More Than Just a Spice', duration: '5 min read', herbId: 'ginger', featured: true },
-  { id: '2', tag: 'Wellness', title: 'Understanding Your Menstrual Cycle', duration: '4 min read', herbId: 'hibiscus' },
-  { id: '3', tag: 'Herbs', title: 'Boost Immunity Naturally with Moringa', duration: '6 min read', herbId: 'moringa' },
-  { id: '4', tag: 'Nutrition', title: 'Herbal Teas You Should Drink Daily', duration: '3 min read', herbId: 'prekese' },
-  { id: '5', tag: 'Cycle', title: 'Natural Support for Every Phase', duration: '7 min read', herbId: 'neem' },
-];
+// Commented out as requested:
+// const ARTICLES = [
+//   { id: '1', tag: 'FEATURED', title: 'The Power of Ginger: More Than Just a Spice', duration: '5 min read', herbId: 'ginger', featured: true },
+//   { id: '2', tag: 'Wellness', title: 'Understanding Your Menstrual Cycle', duration: '4 min read', herbId: 'hibiscus' },
+//   { id: '3', tag: 'Herbs', title: 'Boost Immunity Naturally with Moringa', duration: '6 min read', herbId: 'moringa' },
+//   { id: '4', tag: 'Nutrition', title: 'Herbal Teas You Should Drink Daily', duration: '3 min read', herbId: 'prekese' },
+//   { id: '5', tag: 'Cycle', title: 'Natural Support for Every Phase', duration: '7 min read', herbId: 'neem' },
+// ];
 
 export default function LearnScreen() {
   const router = useRouter();
@@ -43,14 +36,33 @@ export default function LearnScreen() {
   const colors = Colors[theme];
   const [activeTab, setActiveTab] = useState<Tab>('All');
 
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadArticles() {
+      try {
+        const data = await getArticles();
+        setArticles(data);
+      } catch (err) {
+        console.error(err);
+        setError('Unable to load articles.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadArticles();
+  }, []);
+
   const tabs: Tab[] = ['All', 'Herbs', 'Wellness', 'Cycle', 'Nutrition'];
 
   const filtered = activeTab === 'All'
-    ? ARTICLES
-    : ARTICLES.filter(a => a.tag === activeTab || (activeTab === 'Herbs' && a.tag === 'Herbs'));
+    ? articles
+    : articles.filter(a => a.tag === activeTab || (activeTab === 'Herbs' && a.tag === 'Herbs'));
 
-  const featured = ARTICLES.find(a => a.featured);
-  const rest = ARTICLES.filter(a => !a.featured);
+  const featured = articles.find(a => a.featured) || articles[0];
+  const rest = featured ? articles.filter(a => a.id !== featured.id) : articles;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -76,57 +88,77 @@ export default function LearnScreen() {
           ))}
         </ScrollView>
 
-        {/* Featured article */}
-        {featured && activeTab === 'All' && (() => {
-          const herb = herbs.find(h => h.id === featured.herbId);
-          return (
-            <Pressable
-              style={[styles.featuredCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push(`/article/${featured.id}` as any)}
-            >
-              {herb && <Image source={herb.image} style={styles.featuredImg} />}
-              <View style={styles.featuredOverlay}>
-                <View style={[styles.tagBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.tagBadgeText}>FEATURED</Text>
-                </View>
-                <Text style={styles.featuredTitle}>{featured.title}</Text>
-                <View style={styles.durationRow}>
-                  <Clock size={13} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.featuredDuration}>{featured.duration}</Text>
-                </View>
-              </View>
-            </Pressable>
-          );
-        })()}
+        {loading ? (
+          <View style={styles.centerLoading}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ color: colors.textMuted, marginTop: 12 }}>Loading articles...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerLoading}>
+            <Text style={{ color: '#EF4444', textAlign: 'center' }}>{error}</Text>
+          </View>
+        ) : articles.length === 0 ? (
+          <View style={styles.centerLoading}>
+            <Text style={{ color: colors.textMuted }}>No articles available yet.</Text>
+          </View>
+        ) : (
+          <>
+            {/* Featured article */}
+            {featured && activeTab === 'All' && (() => {
+              const herb = herbs.find(h => h.id === featured.herbId);
+              const imageSource = featured.image_url ? { uri: featured.image_url } : (herb?.image || require('../assets/herbs/ginger.png'));
+              return (
+                <Pressable
+                  style={[styles.featuredCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => router.push(`/articles/${featured.slug}` as any)}
+                >
+                  <Image source={imageSource} style={styles.featuredImg} />
+                  <View style={styles.featuredOverlay}>
+                    <View style={[styles.tagBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.tagBadgeText}>FEATURED</Text>
+                    </View>
+                    <Text style={styles.featuredTitle}>{featured.title}</Text>
+                    <View style={styles.durationRow}>
+                      <Clock size={13} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.featuredDuration}>{featured.read_time ?? featured.reading_time ?? featured.duration} min read</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })()}
 
-        {/* Article list */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {activeTab === 'All' ? 'Latest Articles' : activeTab}
-          </Text>
-          {(activeTab === 'All' ? rest : filtered).map(article => {
-            const herb = herbs.find(h => h.id === article.herbId);
-            return (
-              <Pressable
-                key={article.id}
-                style={[styles.articleCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push(`/article/${article.id}` as any)}
-              >
-                {herb && <Image source={herb.image} style={styles.articleThumb} />}
-                <View style={styles.articleContent}>
-                  <View style={[styles.articleTagBadge, { backgroundColor: colors.border }]}>
-                    <Text style={[styles.articleTag, { color: colors.primary }]}>{article.tag}</Text>
-                  </View>
-                  <Text style={[styles.articleTitle, { color: colors.text }]}>{article.title}</Text>
-                  <View style={styles.durationRow}>
-                    <Clock size={13} color={colors.textMuted} />
-                    <Text style={[styles.articleDuration, { color: colors.textMuted }]}>{article.duration}</Text>
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+            {/* Article list */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {activeTab === 'All' ? 'Latest Articles' : activeTab}
+              </Text>
+              {(activeTab === 'All' ? rest : filtered).map(article => {
+                const herb = herbs.find(h => h.id === article.herbId);
+                const imageSource = article.image_url ? { uri: article.image_url } : (herb?.image || require('../assets/herbs/ginger.png'));
+                const readTime = article.read_time ?? article.reading_time ?? article.duration;
+                return (
+                  <Pressable
+                    key={article.id}
+                    style={[styles.articleCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => router.push(`/articles/${article.slug}` as any)}
+                  >
+                    <Image source={imageSource} style={styles.articleThumb} />
+                    <View style={styles.articleContent}>
+                      <View style={[styles.articleTagBadge, { backgroundColor: colors.border }]}>
+                        <Text style={[styles.articleTag, { color: colors.primary }]}>{article.tag}</Text>
+                      </View>
+                      <Text style={[styles.articleTitle, { color: colors.text }]}>{article.title}</Text>
+                      <View style={styles.durationRow}>
+                        <Clock size={13} color={colors.textMuted} />
+                        <Text style={[styles.articleDuration, { color: colors.textMuted }]}>{readTime} min read</Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
 
       </ScrollView>
 
@@ -184,4 +216,5 @@ const styles = StyleSheet.create({
   articleTag: { fontFamily: 'Poppins_600SemiBold', fontSize: 11 },
   articleTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 14, lineHeight: 20, marginBottom: 6 },
   articleDuration: { fontFamily: 'Inter_400Regular', fontSize: 13 },
+  centerLoading: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
 });
