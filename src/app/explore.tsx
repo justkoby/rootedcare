@@ -1,180 +1,257 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState, useMemo } from 'react';
+import {
+  StyleSheet, Text, View, SafeAreaView, StatusBar,
+  useColorScheme, ScrollView, Pressable, TextInput,
+  FlatList,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import {
+  Search as SearchIcon, LayoutGrid, List,
+  Home as HomeIcon, Calendar, BookOpen, User, X,
+} from 'lucide-react-native';
+import { Colors } from '../constants/Colors';
+import { herbs } from '../data/herbs';
+import { HerbCard } from '../components/HerbCard';
+import { AnimatedTabBar } from '../components/animations';
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+const TAB_CONFIG = [
+  { key: 'home',     icon: <HomeIcon />,   label: 'Home'    },
+  { key: 'explore',  icon: <SearchIcon />, label: 'Explore' },
+  { key: 'my-care',  icon: <Calendar />,   label: 'My Care' },
+  { key: 'learn',    icon: <BookOpen />,    label: 'Library' },
+  { key: 'profile',  icon: <User />,       label: 'Profile' },
+];
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
+type ViewMode = 'grid' | 'list';
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+const CATEGORIES = [
+  { id: 'all',           emoji: '🌿', label: 'All'           },
+  { id: 'womens-health', emoji: '🌸', label: "Women's Health" },
+  { id: 'digestion',     emoji: '🫀', label: 'Digestion'      },
+  { id: 'immunity',      emoji: '🛡️', label: 'Immunity'       },
+  { id: 'skin',          emoji: '✨', label: 'Skin'           },
+  { id: 'sleep',         emoji: '💤', label: 'Sleep'          },
+  { id: 'stress',        emoji: '🧘', label: 'Stress'         },
+];
+
+const SYMPTOM_MAP: Record<string, string[]> = {
+  headache:   ['Headache', 'head', 'migraine'],
+  digestion:  ['Digestion', 'Stomach', 'stomach', 'Bloating', 'bloat'],
+  immunity:   ['Immunity', 'immune', 'Cold', 'cold', 'Flu'],
+  skin:       ['Skin', 'acne', 'Skin Rash', 'rash'],
+  sleep:      ['Sleep', 'insomnia', 'Difficulty Sleeping'],
+  stress:     ['Stress', 'anxiety', 'Anxiety', 'Mental Health'],
+};
+
+export default function ExploreScreen() {
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[theme];
+
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+
+  const filtered = useMemo(() => {
+    let results = herbs;
+
+    if (query.trim().length > 0) {
+      const q = query.toLowerCase();
+      results = herbs.filter(h =>
+        h.name.toLowerCase().includes(q) ||
+        h.scientificName.toLowerCase().includes(q) ||
+        h.description.toLowerCase().includes(q) ||
+        h.symptoms.some(s => s.toLowerCase().includes(q)) ||
+        h.bestFor.some(b => b.toLowerCase().includes(q)) ||
+        Object.values(h.localNames).some(n => n?.toLowerCase().includes(q))
+      );
+    }
+
+    if (category !== 'all') {
+      const catTokens = SYMPTOM_MAP[category] ?? [category];
+      results = results.filter(h =>
+        h.bestFor.some(b => catTokens.some(t => b.toLowerCase().includes(t.toLowerCase()))) ||
+        h.symptoms.some(s => catTokens.some(t => s.toLowerCase().includes(t.toLowerCase())))
+      );
+    }
+
+    return results;
+  }, [query, category]);
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>Explore Herbs</Text>
+          <Pressable
+            style={[styles.viewToggle, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+          >
+            {viewMode === 'grid'
+              ? <List size={20} color={colors.primary} />
+              : <LayoutGrid size={20} color={colors.primary} />}
+          </Pressable>
+        </View>
+
+        {/* Search bar */}
+        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <SearchIcon size={18} color={colors.textMuted} />
+          <TextInput
+            placeholder="Search herbs, symptoms, conditions..."
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            style={[styles.searchInput, { color: colors.text }]}
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')}><X size={16} color={colors.textMuted} /></Pressable>
+          )}
+        </View>
+
+        {/* Symptom Checker shortcut */}
+        <Pressable
+          style={[styles.symptomBanner, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '33' }]}
+          onPress={() => router.push('/symptom-checker' as any)}
+        >
+          <Text style={{ fontSize: 20 }}>🩺</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.symptomBannerTitle, { color: colors.text }]}>Not sure which herb?</Text>
+            <Text style={[styles.symptomBannerSub, { color: colors.textMuted }]}>Search by symptom →</Text>
+          </View>
+        </Pressable>
+
+        {/* Category chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+          {CATEGORIES.map(cat => (
+            <Pressable
+              key={cat.id}
+              style={[
+                styles.catChip,
+                {
+                  backgroundColor: category === cat.id ? colors.primary : colors.card,
+                  borderColor: category === cat.id ? colors.primary : colors.border,
+                }
+              ]}
+              onPress={() => setCategory(cat.id)}
+            >
+              <Text style={styles.catEmoji}>{cat.emoji}</Text>
+              <Text style={[styles.catLabel, { color: category === cat.id ? '#FFFFFF' : colors.textMuted }]}>
+                {cat.label}
+              </Text>
             </Pressable>
-          </ExternalLink>
-        </ThemedView>
+          ))}
+        </ScrollView>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+        {/* Results count */}
+        <View style={styles.resultsRow}>
+          <Text style={[styles.resultsCount, { color: colors.textMuted }]}>
+            {filtered.length} herb{filtered.length !== 1 ? 's' : ''} found
+          </Text>
+        </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+        {/* Results */}
+        {filtered.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>🌿</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No herbs found</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+              Try searching by symptom or browse categories.
+            </Text>
+            <Pressable
+              style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/symptom-checker' as any)}
+            >
+              <Text style={styles.emptyBtnText}>Try Symptom Checker</Text>
+            </Pressable>
+          </View>
+        ) : viewMode === 'grid' ? (
+          <View style={styles.grid}>
+            {filtered.map(herb => (
+              <Pressable
+                key={herb.id}
+                style={styles.gridItem}
+                onPress={() => router.push(`/herb/${herb.id}` as any)}
+              >
+                <HerbCard herb={herb} style={styles.gridCard} />
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.listContainer}>
+            {filtered.map(herb => (
+              <Pressable
+                key={herb.id}
+                style={[styles.listItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push(`/herb/${herb.id}` as any)}
+              >
+                <HerbCard herb={herb} compact />
+              </Pressable>
+            ))}
+          </View>
+        )}
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+      </ScrollView>
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+      {/* Bottom Tab Bar */}
+      <AnimatedTabBar
+        tabs={TAB_CONFIG}
+        activeTab="explore"
+        onTabPress={(key) => {
+          const routes: Record<string, string> = {
+            home: '/home',
+            explore: '/explore',
+            'my-care': '/my-care-plan',
+            learn: '/learn',
+            profile: '/profile',
+          };
+          if (routes[key] && key !== 'explore') {
+            router.push(routes[key] as any);
+          }
+        }}
+        colors={{
+          primary: colors.primary,
+          textMuted: colors.textMuted,
+          card: colors.card,
+          border: colors.border,
+        }}
+        theme={theme}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16 },
+  title: { fontFamily: 'Poppins_600SemiBold', fontSize: 28, letterSpacing: -0.5 },
+  viewToggle: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 10, marginBottom: 14 },
+  searchInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15, padding: 0 },
+  symptomBanner: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+  symptomBannerTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 14 },
+  symptomBannerSub: { fontFamily: 'Inter_400Regular', fontSize: 13, marginTop: 2 },
+  catScroll: { paddingHorizontal: 24, paddingBottom: 16, gap: 8 },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  catEmoji: { fontSize: 15 },
+  catLabel: { fontFamily: 'Poppins_500Medium', fontSize: 13 },
+  resultsRow: { paddingHorizontal: 24, marginBottom: 12 },
+  resultsCount: { fontFamily: 'Inter_400Regular', fontSize: 13 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
+  gridItem: { width: '46%', flexGrow: 1 },
+  gridCard: { width: '100%' },
+  listContainer: { paddingHorizontal: 24, gap: 10 },
+  listItem: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
+  emptyEmoji: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 20, marginBottom: 8 },
+  emptySubtitle: { fontFamily: 'Inter_400Regular', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  emptyBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14 },
+  emptyBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 15, color: '#FFFFFF' },
 });
